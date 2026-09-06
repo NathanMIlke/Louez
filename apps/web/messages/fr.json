@@ -5369,10 +5369,8 @@
       },
       "salesChannels": {
         "title": "Canaux de vente",
-        "description": "Choisissez où vos produits sont proposés à la location.",
+        "description": "Choisissez où vous recevez vos réservations. Tous les canaux partagent le même catalogue, les mêmes stocks et le même moteur de réservation.",
         "channels": {
-          "heading": "Où souhaitez-vous recevoir des réservations ?",
-          "subheading": "Activez autant de canaux que vous le souhaitez : ils partagent le même catalogue, les mêmes stocks et le même moteur de réservation.",
           "marketplace": {
             "description": "Vos produits apparaissent dans la recherche publique de reeent, avec réservation directe.",
             "recommended": "Recommandé",

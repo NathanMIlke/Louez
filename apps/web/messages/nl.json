@@ -5369,10 +5369,8 @@
       },
       "salesChannels": {
         "title": "Verkoopkanalen",
-        "description": "Kies waar je producten te huur worden aangeboden.",
+        "description": "Kies waar je reserveringen ontvangt. Alle kanalen delen dezelfde catalogus, dezelfde voorraad en dezelfde reserveringsmotor.",
         "channels": {
-          "heading": "Waar wil je reserveringen ontvangen?",
-          "subheading": "Zet zoveel kanalen aan als je wilt: ze delen dezelfde catalogus, dezelfde voorraad en dezelfde reserveringsmotor.",
           "marketplace": {
             "description": "Je producten verschijnen in de openbare zoekfunctie van reeent, met directe boeking.",
             "recommended": "Aanbevolen",

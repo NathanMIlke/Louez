@@ -5369,10 +5369,8 @@
       },
       "salesChannels": {
         "title": "Vertriebskanäle",
-        "description": "Legen Sie fest, wo Ihre Produkte zur Miete angeboten werden.",
+        "description": "Legen Sie fest, wo Sie Buchungen erhalten. Alle Kanäle teilen denselben Katalog, denselben Bestand und dieselbe Buchungsengine.",
         "channels": {
-          "heading": "Wo möchten Sie Buchungen erhalten?",
-          "subheading": "Aktivieren Sie so viele Kanäle, wie Sie möchten: Sie teilen denselben Katalog, denselben Bestand und dieselbe Buchungsengine.",
           "marketplace": {
             "description": "Ihre Produkte erscheinen in der öffentlichen Suche von reeent, mit Direktbuchung.",
             "recommended": "Empfohlen",

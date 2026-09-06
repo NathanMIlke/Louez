@@ -5369,10 +5369,8 @@
       },
       "salesChannels": {
         "title": "Sales channels",
-        "description": "Choose where your products are offered for rent.",
+        "description": "Choose where you receive bookings. Every channel shares the same catalog, the same stock and the same booking engine.",
         "channels": {
-          "heading": "Where do you want to receive bookings?",
-          "subheading": "Turn on as many channels as you like: they share the same catalog, the same stock and the same booking engine.",
           "marketplace": {
             "description": "Your products show up in reeent's public search, with direct booking.",
             "recommended": "Recommended",

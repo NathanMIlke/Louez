@@ -5369,10 +5369,8 @@
       },
       "salesChannels": {
         "title": "Kanały sprzedaży",
-        "description": "Wybierz, gdzie Twoje produkty są oferowane do wynajmu.",
+        "description": "Wybierz, gdzie chcesz otrzymywać rezerwacje. Wszystkie kanały korzystają z tego samego katalogu, tych samych stanów i tego samego silnika rezerwacji.",
         "channels": {
-          "heading": "Gdzie chcesz otrzymywać rezerwacje?",
-          "subheading": "Włącz tyle kanałów, ile chcesz: korzystają z tego samego katalogu, tych samych stanów i tego samego silnika rezerwacji.",
           "marketplace": {
             "description": "Twoje produkty pojawiają się w publicznej wyszukiwarce reeent, z bezpośrednią rezerwacją.",
             "recommended": "Zalecane",

@@ -5369,10 +5369,8 @@
       },
       "salesChannels": {
         "title": "Canali di vendita",
-        "description": "Scegli dove i tuoi prodotti vengono proposti a noleggio.",
+        "description": "Scegli dove ricevere le prenotazioni. Tutti i canali condividono lo stesso catalogo, le stesse scorte e lo stesso motore di prenotazione.",
         "channels": {
-          "heading": "Dove vuoi ricevere le prenotazioni?",
-          "subheading": "Attiva tutti i canali che vuoi: condividono lo stesso catalogo, le stesse scorte e lo stesso motore di prenotazione.",
           "marketplace": {
             "description": "I tuoi prodotti compaiono nella ricerca pubblica di reeent, con prenotazione diretta.",
             "recommended": "Consigliato",

@@ -115,11 +115,6 @@ export const MarketplaceChannelForm = ({
 
   return (
     <section className="min-w-0 space-y-4">
-      <div className="space-y-1">
-        <h3 className="text-base font-semibold tracking-tight">{t("channels.heading")}</h3>
-        <p className="text-muted-foreground text-sm">{t("channels.subheading")}</p>
-      </div>
-
       <ul className="space-y-3">
         <SalesChannelRow
           icon={<DashboardIconTile icon={StoreIcon} />}

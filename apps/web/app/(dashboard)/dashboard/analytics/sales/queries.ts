@@ -1,22 +1,14 @@
-import {
-  eachDayOfInterval,
-  eachMonthOfInterval,
-  endOfDay,
-  format,
-  startOfDay,
-  startOfMonth,
-  subDays,
-  subMonths,
-} from "date-fns";
 import type { Locale as DateFnsLocale } from "date-fns";
-
-import { and, count, desc, eq, sql } from "drizzle-orm";
-
-import { db } from "@louez/db";
-import { customers, payments, products, reservationItems, reservations } from "@louez/db";
-
-import { getPeriodConfig, type Period } from "../period";
+import { formatInTimeZone } from "date-fns-tz";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
+import { db, customers, payments, products, reservationItems, reservations } from "@louez/db";
 import type { PaymentMethodKey, PaymentMethodTotal } from "./payment-methods-breakdown";
+import {
+  allocateSalesAmounts,
+  getSalesGrowth,
+  roundSalesAmount,
+  type SalesWindow,
+} from "./util.sales-window";
 
 export interface RevenueTimeSeriesPoint {
   label: string;
@@ -29,47 +21,67 @@ const rentalReceiptConditions = (storeId: string) => [
   eq(reservations.storeId, storeId),
   eq(payments.status, "completed"),
   eq(payments.type, "rental"),
+  isNull(payments.refundOfPaymentId),
 ];
 
 /** A payment counts on the day it was cashed in, falling back to its creation. */
 const receiptDate = sql`COALESCE(${payments.paidAt}, ${payments.createdAt})`;
 
-/** Start of the rolling window ending today, aligned on the bucket size. */
-export const getWindowStart = (period: Period, now: Date) => {
-  const config = getPeriodConfig(period);
+export async function getSalesPaymentStats(
+  storeId: string,
+  window: SalesWindow,
+): Promise<{
+  periodRevenue: number;
+  periodPaymentCount: number;
+  avgPaymentValue: number;
+  revenueGrowth: number | null;
+  totalRevenue: number;
+}> {
+  const aggregate = async (start?: Date, end = window.end) => {
+    const [row] = await db
+      .select({
+        revenue: sql<string>`COALESCE(SUM(${payments.amount}), 0)`,
+        paymentCount: count(),
+      })
+      .from(payments)
+      .innerJoin(reservations, eq(payments.reservationId, reservations.id))
+      .where(
+        and(
+          ...rentalReceiptConditions(storeId),
+          ...(start ? [sql`${receiptDate} >= ${start}`] : []),
+          sql`${receiptDate} < ${end}`,
+        ),
+      );
+    return { revenue: Number(row?.revenue ?? 0), paymentCount: Number(row?.paymentCount ?? 0) };
+  };
+  const [current, previous, allTime] = await Promise.all([
+    aggregate(window.start),
+    aggregate(window.previousStart, window.previousEnd),
+    aggregate(),
+  ]);
+  return {
+    periodRevenue: current.revenue,
+    periodPaymentCount: current.paymentCount,
+    avgPaymentValue: current.paymentCount ? current.revenue / current.paymentCount : 0,
+    revenueGrowth: getSalesGrowth(current.revenue, previous.revenue),
+    totalRevenue: allTime.revenue,
+  };
+}
 
-  return config.granularity === "month"
-    ? startOfMonth(subMonths(now, config.months - 1))
-    : startOfDay(subDays(now, config.days - 1));
-};
-
-/**
- * Receipts bucketed over the selected window — one grouped query, then the
- * empty buckets filled with zeros so short periods draw a real curve instead
- * of the single point the previous month-by-month version produced.
- *
- * Buckets are keyed with `DATE_FORMAT` rather than `DATE()`: the driver hands
- * back `DATE` columns as `Date` objects, which makes for a fragile map key.
- */
+/** Bucket boundaries are instants, so grouping does not depend on MySQL timezone tables. */
 export async function getRevenueTimeSeries(
   storeId: string,
-  period: Period,
+  window: SalesWindow,
   locale: DateFnsLocale,
 ): Promise<RevenueTimeSeriesPoint[]> {
-  const { granularity } = getPeriodConfig(period);
-  const now = new Date();
-  const startDate = getWindowStart(period, now);
-  const endDate = endOfDay(now);
-
-  const bucketKey = granularity === "month" ? "yyyy-MM" : "yyyy-MM-dd";
-  const bucketExpression =
-    granularity === "month"
-      ? sql<string>`DATE_FORMAT(${receiptDate}, '%Y-%m')`
-      : sql<string>`DATE_FORMAT(${receiptDate}, '%Y-%m-%d')`;
-
-  const buckets = await db
+  if (window.buckets.length === 0) return [];
+  const bucketExpression = sql`CASE ${sql.join(
+    window.buckets.map((bucket, index) => sql`WHEN ${receiptDate} < ${bucket.end} THEN ${index}`),
+    sql` `,
+  )} END`;
+  const rows = await db
     .select({
-      bucket: bucketExpression,
+      bucket: sql<number>`${bucketExpression}`,
       total: sql<string>`COALESCE(SUM(${payments.amount}), 0)`,
       count: count(),
     })
@@ -78,38 +90,29 @@ export async function getRevenueTimeSeries(
     .where(
       and(
         ...rentalReceiptConditions(storeId),
-        sql`${receiptDate} >= ${startDate}`,
-        sql`${receiptDate} <= ${endDate}`,
+        sql`${receiptDate} >= ${window.start}`,
+        sql`${receiptDate} < ${window.end}`,
       ),
     )
     .groupBy(bucketExpression);
-
-  const bucketsByKey = new Map(buckets.map((bucket) => [bucket.bucket, bucket]));
-
-  const interval = { start: startDate, end: now };
-  const timeline =
-    granularity === "month" ? eachMonthOfInterval(interval) : eachDayOfInterval(interval);
-
-  return timeline.map((date) => {
-    const bucket = bucketsByKey.get(format(date, bucketKey));
-
-    return {
-      label: format(date, granularity === "month" ? "MMM yyyy" : "d MMM", { locale }),
-      revenue: parseFloat(bucket?.total || "0"),
-      payments: bucket?.count || 0,
-    };
-  });
+  const byBucket = new Map(rows.map((row) => [Number(row.bucket), row]));
+  return window.buckets.map((bucket, index) => ({
+    label: formatInTimeZone(
+      bucket.start,
+      window.timezone,
+      window.granularity === "month" ? "MMM yyyy" : "d MMM",
+      { locale },
+    ),
+    revenue: Number(byBucket.get(index)?.total ?? 0),
+    payments: Number(byBucket.get(index)?.count ?? 0),
+  }));
 }
 
 /** Receipts split by payment method over the selected window. */
 export async function getRevenueByPaymentMethod(
   storeId: string,
-  period: Period,
+  window: SalesWindow,
 ): Promise<PaymentMethodTotal[]> {
-  const now = new Date();
-  const startDate = getWindowStart(period, now);
-  const endDate = endOfDay(now);
-
   const rows = await db
     .select({
       method: payments.method,
@@ -121,8 +124,8 @@ export async function getRevenueByPaymentMethod(
     .where(
       and(
         ...rentalReceiptConditions(storeId),
-        sql`${receiptDate} >= ${startDate}`,
-        sql`${receiptDate} <= ${endDate}`,
+        sql`${receiptDate} >= ${window.start}`,
+        sql`${receiptDate} < ${window.end}`,
       ),
     )
     .groupBy(payments.method);
@@ -145,7 +148,10 @@ export interface TopProductRow {
 export interface TopProductsByRevenue {
   products: TopProductRow[];
   /** Allocated receipts of every product over the window, top 10 or not. */
-  allProductsRevenue: number;
+  catalogRevenue: number;
+  totalRevenue: number;
+  nonCatalogRevenue: number;
+  unallocatedRevenue: number;
   /** Distinct products that brought receipts over the window. */
   productCount: number;
 }
@@ -158,12 +164,8 @@ export interface TopProductsByRevenue {
  */
 export async function getTopProductsByRevenue(
   storeId: string,
-  period: Period,
+  window: SalesWindow,
 ): Promise<TopProductsByRevenue> {
-  const { days } = getPeriodConfig(period);
-  // Same bounds as `getRentalPaymentPeriodStats`, so the totals line up with the KPI.
-  const startDate = subDays(new Date(), days);
-
   const paymentTotals = db
     .select({
       reservationId: payments.reservationId,
@@ -171,7 +173,13 @@ export async function getTopProductsByRevenue(
     })
     .from(payments)
     .innerJoin(reservations, eq(payments.reservationId, reservations.id))
-    .where(and(...rentalReceiptConditions(storeId), sql`${receiptDate} >= ${startDate}`))
+    .where(
+      and(
+        ...rentalReceiptConditions(storeId),
+        sql`${receiptDate} >= ${window.start}`,
+        sql`${receiptDate} < ${window.end}`,
+      ),
+    )
     .groupBy(payments.reservationId)
     .as("payment_totals");
 
@@ -187,7 +195,7 @@ export async function getTopProductsByRevenue(
   /** Share of its reservation's receipts an item is worth, by price weight. */
   const allocatedRevenue = sql`CASE WHEN ${reservationItemTotals.itemTotal} > 0 THEN (${paymentTotals.paidAmount} * ${reservationItems.totalPrice}) / ${reservationItemTotals.itemTotal} ELSE 0 END`;
 
-  const [topProducts, totals] = await Promise.all([
+  const [topProducts, totals, receiptTotals] = await Promise.all([
     db
       .select({
         productId: reservationItems.productId,
@@ -202,14 +210,17 @@ export async function getTopProductsByRevenue(
         reservationItemTotals,
         eq(reservationItems.reservationId, reservationItemTotals.reservationId),
       )
-      .innerJoin(products, eq(reservationItems.productId, products.id))
+      .innerJoin(
+        products,
+        and(eq(reservationItems.productId, products.id), eq(products.storeId, storeId)),
+      )
       .groupBy(reservationItems.productId, products.name)
-      .orderBy(desc(sql`SUM(${allocatedRevenue})`))
-      .limit(10),
+      .orderBy(desc(sql`SUM(${allocatedRevenue})`), products.id),
     db
       .select({
-        allProductsRevenue: sql<string>`COALESCE(SUM(${allocatedRevenue}), 0)`,
-        productCount: sql<number>`COUNT(DISTINCT ${reservationItems.productId})`,
+        catalogRevenue: sql<string>`COALESCE(SUM(CASE WHEN ${products.id} IS NOT NULL THEN ${allocatedRevenue} ELSE 0 END), 0)`,
+        nonCatalogRevenue: sql<string>`COALESCE(SUM(CASE WHEN ${products.id} IS NULL THEN ${allocatedRevenue} ELSE 0 END), 0)`,
+        productCount: sql<number>`COUNT(DISTINCT ${products.id})`,
       })
       .from(reservationItems)
       .innerJoin(paymentTotals, eq(reservationItems.reservationId, paymentTotals.reservationId))
@@ -217,12 +228,35 @@ export async function getTopProductsByRevenue(
         reservationItemTotals,
         eq(reservationItems.reservationId, reservationItemTotals.reservationId),
       )
-      .innerJoin(products, eq(reservationItems.productId, products.id)),
+      .leftJoin(
+        products,
+        and(eq(reservationItems.productId, products.id), eq(products.storeId, storeId)),
+      ),
+    db
+      .select({ total: sql<string>`COALESCE(SUM(${paymentTotals.paidAmount}), 0)` })
+      .from(paymentTotals),
   ]);
 
+  const totalRevenue = Number(receiptTotals[0]?.total ?? 0);
+  const rawNonCatalog = Number(totals[0]?.nonCatalogRevenue ?? 0);
+  const rawUnallocated = Math.max(
+    0,
+    totalRevenue - Number(totals[0]?.catalogRevenue ?? 0) - rawNonCatalog,
+  );
+  const amounts = allocateSalesAmounts(
+    [...topProducts.map((product) => Number(product.totalRevenue)), rawNonCatalog, rawUnallocated],
+    totalRevenue,
+  );
+  const nonCatalogRevenue = amounts[topProducts.length] ?? 0;
+  const unallocatedRevenue = amounts[topProducts.length + 1] ?? 0;
   return {
-    products: topProducts,
-    allProductsRevenue: parseFloat(totals[0]?.allProductsRevenue || "0"),
+    products: topProducts
+      .slice(0, 10)
+      .map((product, index) => ({ ...product, totalRevenue: (amounts[index] ?? 0).toFixed(2) })),
+    catalogRevenue: roundSalesAmount(totalRevenue - nonCatalogRevenue - unallocatedRevenue),
+    totalRevenue,
+    nonCatalogRevenue,
+    unallocatedRevenue,
     productCount: Number(totals[0]?.productCount || 0),
   };
 }
@@ -241,11 +275,8 @@ export interface TopCustomerRow {
 /** Best customers by receipts over the window — same filters as the receipts KPI. */
 export async function getTopCustomersByRevenue(
   storeId: string,
-  period: Period,
+  window: SalesWindow,
 ): Promise<TopCustomerRow[]> {
-  const { days } = getPeriodConfig(period);
-  const startDate = subDays(new Date(), days);
-
   return db
     .select({
       customerId: customers.id,
@@ -260,7 +291,13 @@ export async function getTopCustomersByRevenue(
     .from(payments)
     .innerJoin(reservations, eq(payments.reservationId, reservations.id))
     .innerJoin(customers, eq(reservations.customerId, customers.id))
-    .where(and(...rentalReceiptConditions(storeId), sql`${receiptDate} >= ${startDate}`))
+    .where(
+      and(
+        ...rentalReceiptConditions(storeId),
+        sql`${receiptDate} >= ${window.start}`,
+        sql`${receiptDate} < ${window.end}`,
+      ),
+    )
     .groupBy(
       customers.id,
       customers.firstName,

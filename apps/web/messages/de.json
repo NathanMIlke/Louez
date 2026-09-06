@@ -2988,8 +2988,8 @@
       "totalRevenue": "Gesamte Eingänge",
       "reservations": "Reservierungen",
       "avgPaymentInline": "durchschnittliche Zahlung {amount}",
-      "occupancyRate": "Auslastungsrate",
-      "upcomingRevenue": "Zukünftiger Umsatz",
+      "occupancyRate": "Geschätzte Auslastung",
+      "upcomingRevenue": "Noch zu zahlen · zukünftige Buchungen",
       "avgRentalDuration": "Durchschnittliche Mietdauer",
       "rentalActivity": "Vermietungsaktivität",
       "topProducts": {
@@ -3001,7 +3001,9 @@
         "revenue": "Umsatz",
         "units": "{count, plural, one {# Einheit} other {# Einheiten}}",
         "othersRow": "{count, plural, one {+ # weiteres Produkt} other {+ # weitere Produkte}}",
-        "totalRow": "Gesamt"
+        "totalRow": "Gesamt",
+        "nonCatalog": "Artikel außerhalb des Katalogs",
+        "unallocated": "Nicht zugeordnete Zahlungseingänge"
       },
       "topCustomers": {
         "title": "Beste Kunden",
@@ -3031,8 +3033,8 @@
       "onReservations": "bei {count} Reservierungen",
       "sinceBeginning": "seit Beginn",
       "vsLastPeriod": "vs vorheriger Zeitraum",
-      "occupancySubtitle": "{count, plural, =0 {keine aktive Einheit} one {von # verfügbaren Einheit} other {von # verfügbaren Einheiten}}",
-      "upcomingRevenueCount": "{count, plural, =0 {keine bestätigte Reservierung} one {# bestätigte Reservierung} other {# bestätigte Reservierungen}}",
+      "occupancySubtitle": "{count, plural, one {# aktive Einheit · nach Buchungsdaten} other {# aktive Einheiten · nach Buchungsdaten}}",
+      "upcomingRevenueCount": "{count, plural, =0 {keine zukünftigen Buchungen mit offenem Betrag} one {# zukünftige Buchung mit offenem Betrag} other {# zukünftige Buchungen mit offenem Betrag}}",
       "durationDays": "{days, plural, one {{days, number, ::.0} Tag} other {{days, number, ::.0} Tage}}",
       "durationHours": "{hours, plural, one {# Stunde} other {# Stunden}}",
       "noData": "Nicht genügend Daten",

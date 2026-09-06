@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { allocateSalesAmounts } from "./util.sales-window";
 
 import { CreditCardSolidIcon } from "@louez/ui/icons";
 import { cn, formatCurrency } from "@louez/utils";
@@ -55,15 +56,19 @@ export const PaymentMethodsBreakdown = ({
   }
 
   // A method that brought nothing over the period would only add an empty row.
-  const methods = data
+  const positiveMethods = data
     .filter((entry) => entry.amount > 0)
-    .map((entry) => ({
-      ...entry,
-      label: t(`paymentMethods.${entry.method}`),
-      percentage: Math.round((entry.amount / total) * 100),
-      accent: METHOD_ACCENTS[entry.method],
-    }))
     .sort((a, b) => b.amount - a.amount);
+  const shares = allocateSalesAmounts(
+    positiveMethods.map((entry) => entry.amount / total),
+    1,
+  );
+  const methods = positiveMethods.map((entry, index) => ({
+    ...entry,
+    label: t(`paymentMethods.${entry.method}`),
+    percentage: Math.round((shares[index] ?? 0) * 100),
+    accent: METHOD_ACCENTS[entry.method],
+  }));
 
   return (
     <div className={cn("@container space-y-4", className)}>

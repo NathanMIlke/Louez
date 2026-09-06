@@ -1,4 +1,4 @@
-import { endOfMonth, startOfMonth, subDays, subMonths } from 'date-fns';
+import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
 import { and, count, eq, gte, lte, sql } from 'drizzle-orm';
 
 import { customers, db, payments, products, reservations } from '@louez/db';
@@ -59,19 +59,6 @@ export interface RentalPaymentRevenueStats {
   totalReservations: number;
   avgOrderValue: number;
   revenueGrowth: number;
-}
-
-/** Rolling-window receipts, compared with the window right before it. */
-export interface RentalPaymentPeriodStats {
-  periodRevenue: number;
-  periodPaymentCount: number;
-  prevRevenue: number;
-  prevPaymentCount: number;
-  revenueGrowth: number;
-  paymentsGrowth: number;
-  avgPaymentValue: number;
-  totalRevenue: number;
-  totalPayments: number;
 }
 
 /**
@@ -160,57 +147,6 @@ export async function getRentalPaymentRevenueStats(params: {
     totalReservations: allTime.reservationCount,
     avgOrderValue,
     revenueGrowth,
-  };
-}
-
-/**
- * Receipts over the last `days` days, compared with the `days` that preceded
- * them — the analytics sales KPIs, which follow the selected period instead of
- * the calendar month.
- */
-export async function getRentalPaymentPeriodStats(params: {
-  storeId: string;
-  days: number;
-}): Promise<RentalPaymentPeriodStats> {
-  const { storeId, days } = params;
-  const now = new Date();
-  const periodStart = subDays(now, days);
-  const prevStart = subDays(now, days * 2);
-  // The two windows must not overlap: the previous one stops just short of the
-  // current one, whose bounds are inclusive.
-  const prevEnd = new Date(periodStart.getTime() - 1);
-
-  const [period, previous, allTime] = await Promise.all([
-    getRentalPaymentStats({ storeId, startDate: periodStart }),
-    getRentalPaymentStats({ storeId, startDate: prevStart, endDate: prevEnd }),
-    getRentalPaymentStats({ storeId }),
-  ]);
-
-  const revenueGrowth =
-    previous.revenue > 0
-      ? ((period.revenue - previous.revenue) / previous.revenue) * 100
-      : 0;
-
-  const paymentsGrowth =
-    previous.paymentCount > 0
-      ? ((period.paymentCount - previous.paymentCount) /
-          previous.paymentCount) *
-        100
-      : 0;
-
-  const avgPaymentValue =
-    period.paymentCount > 0 ? period.revenue / period.paymentCount : 0;
-
-  return {
-    periodRevenue: period.revenue,
-    periodPaymentCount: period.paymentCount,
-    prevRevenue: previous.revenue,
-    prevPaymentCount: previous.paymentCount,
-    revenueGrowth,
-    paymentsGrowth,
-    avgPaymentValue,
-    totalRevenue: allTime.revenue,
-    totalPayments: allTime.paymentCount,
   };
 }
 

@@ -55,19 +55,7 @@ interface ProductRentalPaymentStats {
   reservationCount: number;
 }
 
-/**
- * Mirrors `getRentalPaymentStats` in `apps/web/lib/dashboard/metrics.ts`, scoped
- * down to payments belonging to reservations that include `productId` as a
- * line item.
- *
- * A reservation can (rarely) contain more than one line item for the same
- * product (e.g. two different variants of the same product booked together).
- * To avoid multiplying `payments.amount` when joining reservationItems
- * directly onto the payments aggregation, we first resolve the DISTINCT set
- * of matching reservation ids in a subquery, then filter payments by
- * `reservationId IN (...)`. Duplicate reservation ids inside that subquery
- * are harmless for an `IN` filter.
- */
+/** Allocate rental receipts by line-item price, matching the sales product ranking. */
 async function getProductRentalPaymentStats(params: {
   storeId: string;
   productId: string;
@@ -76,11 +64,23 @@ async function getProductRentalPaymentStats(params: {
 }): Promise<ProductRentalPaymentStats> {
   const { storeId, productId, startDate, endDateExclusive } = params;
 
-  const matchingReservationIds = db
-    .select({ id: reservations.id })
-    .from(reservations)
-    .innerJoin(reservationItems, eq(reservationItems.reservationId, reservations.id))
-    .where(and(eq(reservations.storeId, storeId), eq(reservationItems.productId, productId)));
+  const itemTotals = db
+    .select({
+      reservationId: reservationItems.reservationId,
+      total: sql<string>`SUM(${reservationItems.totalPrice})`.as("item_total"),
+      productTotal:
+        sql<string>`SUM(CASE WHEN ${reservationItems.productId} = ${productId} THEN ${reservationItems.totalPrice} ELSE 0 END)`.as(
+          "product_total",
+        ),
+    })
+    .from(reservationItems)
+    .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
+    .where(eq(reservations.storeId, storeId))
+    .groupBy(reservationItems.reservationId)
+    .having(sql`SUM(CASE WHEN ${reservationItems.productId} = ${productId} THEN 1 ELSE 0 END) > 0`)
+    .as("item_totals");
+
+  const allocatedRevenue = sql`CASE WHEN ${itemTotals.total} > 0 THEN ${payments.amount} * ${itemTotals.productTotal} / ${itemTotals.total} ELSE 0 END`;
 
   const dateConditions = [
     ...(startDate
@@ -93,15 +93,16 @@ async function getProductRentalPaymentStats(params: {
 
   const result = await db
     .select({
-      revenue: sql<string>`COALESCE(SUM(${payments.amount}), 0)`,
+      revenue: sql<string>`COALESCE(SUM(${allocatedRevenue}), 0)`,
       reservationCount: sql<number>`COUNT(DISTINCT ${payments.reservationId})`,
     })
     .from(payments)
+    .innerJoin(itemTotals, eq(payments.reservationId, itemTotals.reservationId))
     .where(
       and(
         eq(payments.status, "completed"),
         eq(payments.type, "rental"),
-        inArray(payments.reservationId, matchingReservationIds),
+        isNull(payments.refundOfPaymentId),
         ...dateConditions,
       ),
     );

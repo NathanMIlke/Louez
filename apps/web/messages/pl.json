@@ -2949,8 +2949,8 @@
       "totalRevenue": "Łączne wpływy",
       "reservations": "Rezerwacje",
       "avgPaymentInline": "średnia płatność {amount}",
-      "occupancyRate": "Wskaźnik obłożenia",
-      "upcomingRevenue": "Przyszłe przychody",
+      "occupancyRate": "Szacowane wykorzystanie",
+      "upcomingRevenue": "Do zapłaty · nadchodzące rezerwacje",
       "avgRentalDuration": "Średni czas wynajmu",
       "rentalActivity": "Aktywność wynajmu",
       "topProducts": {
@@ -2962,7 +2962,9 @@
         "revenue": "Przychód",
         "units": "{count, plural, one {# jednostka} few {# jednostki} many {# jednostek} other {# jednostek}}",
         "othersRow": "{count, plural, one {+ # inny produkt} few {+ # inne produkty} many {+ # innych produktów} other {+ # innych produktów}}",
-        "totalRow": "Razem"
+        "totalRow": "Razem",
+        "nonCatalog": "Artykuły spoza katalogu",
+        "unallocated": "Nieprzypisane wpływy"
       },
       "topCustomers": {
         "title": "Najlepsi klienci",
@@ -2992,8 +2994,8 @@
       "onReservations": "na {count} rezerwacji",
       "sinceBeginning": "od początku",
       "vsLastPeriod": "vs poprzedni okres",
-      "occupancySubtitle": "{count, plural, =0 {brak aktywnych jednostek} one {z # dostępnej jednostki} few {z # dostępnych jednostek} many {z # dostępnych jednostek} other {z # dostępnych jednostek}}",
-      "upcomingRevenueCount": "{count, plural, =0 {brak potwierdzonych rezerwacji} one {# potwierdzona rezerwacja} few {# potwierdzone rezerwacje} many {# potwierdzonych rezerwacji} other {# potwierdzonych rezerwacji}}",
+      "occupancySubtitle": "{count, plural, one {# aktywna jednostka · według dat rezerwacji} few {# aktywne jednostki · według dat rezerwacji} other {# aktywnych jednostek · według dat rezerwacji}}",
+      "upcomingRevenueCount": "{count, plural, =0 {brak nadchodzących rezerwacji z zaległą kwotą} one {# nadchodząca rezerwacja z zaległą kwotą} few {# nadchodzące rezerwacje z zaległą kwotą} other {# nadchodzących rezerwacji z zaległą kwotą}}",
       "durationDays": "{days, plural, one {{days, number, ::.0} dzień} few {{days, number, ::.0} dni} many {{days, number, ::.0} dni} other {{days, number, ::.0} dnia}}",
       "durationHours": "{hours, plural, one {# godzina} few {# godziny} many {# godzin} other {# godziny}}",
       "noData": "Za mało danych",

@@ -2988,8 +2988,8 @@
       "totalRevenue": "Encaissements totaux",
       "reservations": "Réservations",
       "avgPaymentInline": "paiement moyen {amount}",
-      "occupancyRate": "Taux d'occupation",
-      "upcomingRevenue": "Revenus à venir",
+      "occupancyRate": "Occupation estimée",
+      "upcomingRevenue": "Reste à encaisser · réservations à venir",
       "avgRentalDuration": "Durée moyenne de location",
       "rentalActivity": "Activité de location",
       "topProducts": {
@@ -3001,7 +3001,9 @@
         "revenue": "Revenus",
         "units": "{count, plural, one {# unité} other {# unités}}",
         "othersRow": "{count, plural, one {+ # autre produit} other {+ # autres produits}}",
-        "totalRow": "Total"
+        "totalRow": "Total",
+        "nonCatalog": "Articles hors catalogue",
+        "unallocated": "Encaissements sans attribution"
       },
       "topCustomers": {
         "title": "Meilleurs clients",
@@ -3031,8 +3033,8 @@
       "onReservations": "sur {count} réservations",
       "sinceBeginning": "depuis le début",
       "vsLastPeriod": "vs période précédente",
-      "occupancySubtitle": "{count, plural, =0 {aucune unité active} one {sur # unité disponible} other {sur # unités disponibles}}",
-      "upcomingRevenueCount": "{count, plural, =0 {aucune réservation confirmée} one {# réservation confirmée} other {# réservations confirmées}}",
+      "occupancySubtitle": "{count, plural, one {# unité active · selon les dates de réservation} other {# unités actives · selon les dates de réservation}}",
+      "upcomingRevenueCount": "{count, plural, =0 {aucune réservation à venir avec un solde dû} one {# réservation à venir avec un solde dû} other {# réservations à venir avec un solde dû}}",
       "durationDays": "{days, plural, one {{days, number, ::.0} jour} other {{days, number, ::.0} jours}}",
       "durationHours": "{hours, plural, one {# heure} other {# heures}}",
       "noData": "Pas assez de données",

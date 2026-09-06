@@ -18,15 +18,16 @@ import { DASHBOARD_ACCENT_FILL } from "@/components/dashboard/shared/dashboard-a
 import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-section-card";
 import { DashboardTrendBadge } from "@/components/dashboard/shared/dashboard-trend-badge";
 
-import { getRentalPaymentPeriodStats } from "@/lib/dashboard/metrics";
 import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 import { getCurrentStore } from "@/lib/store-context";
 
-import { getPeriodConfig, parsePeriod, type Period } from "../period";
+import { parsePeriod } from "../period";
+import { getSalesWindow, type SalesWindow } from "./util.sales-window";
 import { RevenueChart } from "../revenue-chart";
 import { TopProductsTable } from "../top-products-table";
 import { PaymentMethodsBreakdown } from "./payment-methods-breakdown";
 import {
+  getSalesPaymentStats,
   getRevenueByPaymentMethod,
   getRevenueTimeSeries,
   getTopCustomersByRevenue,
@@ -52,18 +53,23 @@ interface SalesAnalyticsPageProps {
  * The hero and the stat strip sit in two Suspense boundaries but read the same
  * receipts aggregate — `cache` keeps that a single round trip per request.
  */
-const getPeriodPaymentStats = cache((storeId: string, period: Period) =>
-  getRentalPaymentPeriodStats({ storeId, days: getPeriodConfig(period).days }),
+const getPeriodPaymentStats = cache((storeId: string, window: SalesWindow) =>
+  getSalesPaymentStats(storeId, window),
 );
 
 /** Below two days a rental reads better in hours than in fractions of a day. */
 const DURATION_DAYS_THRESHOLD_HOURS = 48;
 
 /** Headline receipts of the period, sitting on top of the revenue chart. */
-async function RevenueHero({ storeId, period }: { storeId: string; period: Period }) {
+async function RevenueHero({ storeId, window }: { storeId: string; window: SalesWindow }) {
   const t = await getTranslations("dashboard.statistics");
   const { intl: formatLocale } = await getRequestFormatLocale();
-  const stats = await getPeriodPaymentStats(storeId, period);
+  const stats = await getPeriodPaymentStats(storeId, window);
+  const periodDateFormat = new Intl.DateTimeFormat(formatLocale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: window.timezone,
+  });
 
   return (
     <div className="space-y-1">
@@ -72,11 +78,19 @@ async function RevenueHero({ storeId, period }: { storeId: string; period: Perio
           {formatCurrency(stats.periodRevenue, "EUR", formatLocale)}
         </span>
         <DashboardTrendBadge trend={stats.revenueGrowth} />
-        <span className="text-muted-foreground text-xs">{t("vsLastPeriod")}</span>
+        {stats.revenueGrowth !== null && (
+          <span className="text-muted-foreground text-xs">{t("vsLastPeriod")}</span>
+        )}
       </div>
+      <p className="text-muted-foreground text-xs">
+        {periodDateFormat.format(window.start)} – {periodDateFormat.format(window.end)} (
+        {window.timezone})
+      </p>
       <p className="text-muted-foreground text-sm">
         {t("paymentsCount", { count: stats.periodPaymentCount })} ·{" "}
-        {t("avgPaymentInline", { amount: formatCurrency(stats.avgPaymentValue, "EUR", formatLocale) })}
+        {t("avgPaymentInline", {
+          amount: formatCurrency(stats.avgPaymentValue, "EUR", formatLocale),
+        })}
       </p>
     </div>
   );
@@ -142,13 +156,13 @@ function StatStripSkeleton() {
   );
 }
 
-async function SalesStatStrip({ storeId, period }: { storeId: string; period: Period }) {
+async function SalesStatStrip({ storeId, window }: { storeId: string; window: SalesWindow }) {
   const { intl: formatLocale } = await getRequestFormatLocale();
   const t = await getTranslations("dashboard.statistics");
   const [reservationStats, duration, payments] = await Promise.all([
-    getPeriodReservationStats(storeId, period),
-    getAverageRentalDuration(storeId, period),
-    getPeriodPaymentStats(storeId, period),
+    getPeriodReservationStats(storeId, window),
+    getAverageRentalDuration(storeId, window),
+    getPeriodPaymentStats(storeId, window),
   ]);
 
   const avgHours = duration.avgMinutes === null ? null : duration.avgMinutes / 60;
@@ -159,7 +173,7 @@ async function SalesStatStrip({ storeId, period }: { storeId: string; period: Pe
         label={t("reservations")}
         value={reservationStats.reservationCount}
         trend={reservationStats.growth}
-        subtitle={t("vsLastPeriod")}
+        subtitle={reservationStats.growth === null ? t("noData") : t("vsLastPeriod")}
       />
       <StatStripItem
         label={t("avgRentalDuration")}
@@ -196,12 +210,18 @@ function RentalActivitySkeleton() {
   );
 }
 
-async function RentalActivitySection({ storeId, period }: { storeId: string; period: Period }) {
+async function RentalActivitySection({
+  storeId,
+  window,
+}: {
+  storeId: string;
+  window: SalesWindow;
+}) {
   const { intl: formatLocale } = await getRequestFormatLocale();
   const t = await getTranslations("dashboard.statistics");
   const [occupancy, upcoming] = await Promise.all([
-    getOccupancyStats(storeId, period),
-    getUpcomingRevenue(storeId),
+    getOccupancyStats(storeId, window),
+    getUpcomingRevenue(storeId, window.end),
   ]);
 
   return (
@@ -237,33 +257,46 @@ async function RentalActivitySection({ storeId, period }: { storeId: string; per
   );
 }
 
-async function RevenueChartSection({ storeId, period }: { storeId: string; period: Period }) {
+async function RevenueChartSection({ storeId, window }: { storeId: string; window: SalesWindow }) {
   const { dateFns } = await getRequestFormatLocale();
-  const data = await getRevenueTimeSeries(storeId, period, dateFns);
+  const data = await getRevenueTimeSeries(storeId, window, dateFns);
   return <RevenueChart data={data} />;
 }
 
-async function PaymentMethodsSection({ storeId, period }: { storeId: string; period: Period }) {
-  const data = await getRevenueByPaymentMethod(storeId, period);
+async function PaymentMethodsSection({
+  storeId,
+  window,
+}: {
+  storeId: string;
+  window: SalesWindow;
+}) {
+  const data = await getRevenueByPaymentMethod(storeId, window);
   return <PaymentMethodsBreakdown data={data} />;
 }
 
 async function TopProductsByRevenueSection({
   storeId,
-  period,
+  window,
 }: {
   storeId: string;
-  period: Period;
+  window: SalesWindow;
 }) {
-  const { products, allProductsRevenue, productCount } = await getTopProductsByRevenue(
-    storeId,
-    period,
-  );
+  const {
+    products,
+    catalogRevenue,
+    totalRevenue,
+    nonCatalogRevenue,
+    unallocatedRevenue,
+    productCount,
+  } = await getTopProductsByRevenue(storeId, window);
 
   return (
     <TopProductsTable
       products={products}
-      allProductsRevenue={allProductsRevenue}
+      catalogRevenue={catalogRevenue}
+      totalRevenue={totalRevenue}
+      nonCatalogRevenue={nonCatalogRevenue}
+      unallocatedRevenue={unallocatedRevenue}
       productCount={productCount}
     />
   );
@@ -271,12 +304,12 @@ async function TopProductsByRevenueSection({
 
 async function TopCustomersByRevenueSection({
   storeId,
-  period,
+  window,
 }: {
   storeId: string;
-  period: Period;
+  window: SalesWindow;
 }) {
-  const customers = await getTopCustomersByRevenue(storeId, period);
+  const customers = await getTopCustomersByRevenue(storeId, window);
   return <TopCustomersTable customers={customers} />;
 }
 
@@ -289,6 +322,8 @@ export default async function SalesAnalyticsPage({ searchParams }: SalesAnalytic
   if (!store) {
     redirect("/onboarding");
   }
+
+  const window = getSalesWindow(period, new Date(), store.settings?.timezone || "UTC");
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -304,11 +339,11 @@ export default async function SalesAnalyticsPage({ searchParams }: SalesAnalytic
           contentClassName="space-y-4"
         >
           <Suspense fallback={<RevenueHeroSkeleton />}>
-            <RevenueHero storeId={store.id} period={period} />
+            <RevenueHero storeId={store.id} window={window} />
           </Suspense>
 
           <Suspense fallback={<Skeleton className="h-64 w-full sm:h-72" />}>
-            <RevenueChartSection storeId={store.id} period={period} />
+            <RevenueChartSection storeId={store.id} window={window} />
           </Suspense>
         </DashboardSectionCard>
 
@@ -319,18 +354,18 @@ export default async function SalesAnalyticsPage({ searchParams }: SalesAnalytic
           accent="primary"
         >
           <Suspense fallback={<Skeleton className="h-50 w-full" />}>
-            <PaymentMethodsSection storeId={store.id} period={period} />
+            <PaymentMethodsSection storeId={store.id} window={window} />
           </Suspense>
         </DashboardSectionCard>
       </div>
 
       <Suspense fallback={<StatStripSkeleton />}>
-        <SalesStatStrip storeId={store.id} period={period} />
+        <SalesStatStrip storeId={store.id} window={window} />
       </Suspense>
 
       <DashboardSectionCard title={t("rentalActivity")} icon={CalendarSolidIcon} accent="progress">
         <Suspense fallback={<RentalActivitySkeleton />}>
-          <RentalActivitySection storeId={store.id} period={period} />
+          <RentalActivitySection storeId={store.id} window={window} />
         </Suspense>
       </DashboardSectionCard>
 
@@ -341,7 +376,7 @@ export default async function SalesAnalyticsPage({ searchParams }: SalesAnalytic
         accent="submitted"
       >
         <Suspense fallback={<Skeleton className="h-75 w-full" />}>
-          <TopProductsByRevenueSection storeId={store.id} period={period} />
+          <TopProductsByRevenueSection storeId={store.id} window={window} />
         </Suspense>
       </DashboardSectionCard>
 
@@ -352,7 +387,7 @@ export default async function SalesAnalyticsPage({ searchParams }: SalesAnalytic
         accent="progress"
       >
         <Suspense fallback={<Skeleton className="h-75 w-full" />}>
-          <TopCustomersByRevenueSection storeId={store.id} period={period} />
+          <TopCustomersByRevenueSection storeId={store.id} window={window} />
         </Suspense>
       </DashboardSectionCard>
     </div>

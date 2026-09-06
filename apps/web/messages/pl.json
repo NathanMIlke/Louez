@@ -7036,6 +7036,7 @@
     "signature": {
       "validated": "Zatwierdzone",
       "signed": "Podpisane",
+      "pending": "Oczekuje na podpis",
       "landlordText": "Wynajmujący potwierdza dokładność powyższych informacji i dostępność sprzętu w podanym okresie.",
       "customerText": "Potwierdzam, że zapoznałem się z ogólnymi warunkami najmu i akceptuję je bez zastrzeżeń.",
       "dateLabel": "Data:",

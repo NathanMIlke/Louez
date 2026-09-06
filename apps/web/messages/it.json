@@ -7036,6 +7036,7 @@
     "signature": {
       "validated": "Convalidato",
       "signed": "Firmato",
+      "pending": "In attesa di firma",
       "landlordText": "Il locatore certifica l'accuratezza delle informazioni sopra indicate e la disponibilita dell'attrezzatura per il periodo indicato.",
       "customerText": "Riconosco di aver letto e accetto i termini e le condizioni generali di noleggio senza riserve.",
       "dateLabel": "Data:",

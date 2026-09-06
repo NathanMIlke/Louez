@@ -7036,6 +7036,7 @@
     "signature": {
       "validated": "Validado",
       "signed": "Firmado",
+      "pending": "Pendiente de firma",
       "landlordText": "El arrendador certifica la exactitud de la informacion anterior y la disponibilidad del equipo para el periodo indicado.",
       "customerText": "Reconozco que he leido y acepto los terminos y condiciones generales de alquiler sin reservas.",
       "dateLabel": "Fecha:",

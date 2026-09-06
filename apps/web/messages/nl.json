@@ -7036,6 +7036,7 @@
     "signature": {
       "validated": "Gevalideerd",
       "signed": "Ondertekend",
+      "pending": "Wacht op ondertekening",
       "landlordText": "De verhuurder verklaart de juistheid van bovenstaande informatie en de beschikbaarheid van het materiaal voor de aangegeven periode.",
       "customerText": "Ik erken dat ik de algemene huurvoorwaarden heb gelezen en ga zonder voorbehoud akkoord.",
       "dateLabel": "Datum:",

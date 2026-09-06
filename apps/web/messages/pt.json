@@ -7036,6 +7036,7 @@
     "signature": {
       "validated": "Validado",
       "signed": "Assinado",
+      "pending": "Aguardando assinatura",
       "landlordText": "O locador certifica a exatidao das informacoes acima e a disponibilidade do equipamento para o periodo indicado.",
       "customerText": "Reconheco que li e concordo com os termos e condicoes gerais de aluguel sem reservas.",
       "dateLabel": "Data:",

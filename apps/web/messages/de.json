@@ -7036,6 +7036,7 @@
     "signature": {
       "validated": "Validiert",
       "signed": "Unterschrieben",
+      "pending": "Unterschrift ausstehend",
       "landlordText": "Der Vermieter bestätigt die Richtigkeit der obigen Informationen und die Verfügbarkeit der Ausrüstung für den angegebenen Zeitraum.",
       "customerText": "Ich bestätige, dass ich die allgemeinen Mietbedingungen gelesen habe und ohne Vorbehalt akzeptiere.",
       "dateLabel": "Datum:",

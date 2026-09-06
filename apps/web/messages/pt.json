@@ -4887,22 +4887,22 @@
         "deleteAccount": "Excluir conta",
         "deleteAccountDescription": "Elimina a sua conta, as suas lojas e os respetivos dados ativos",
         "deleteAccountWarning": "Esta ação é irreversível. Apenas os documentos exigidos por lei podem permanecer num arquivo separado.",
-      "accountDeletion": {
-        "reasonTitle": "Antes de sair",
-        "reasonDescription": "Porque está a deixar o Louez? A resposta é opcional e guardada sem ligação à sua identidade.",
-        "reasons": {
-          "tooExpensive": "O preço é demasiado elevado",
-          "missingFeatures": "Faltam funcionalidades de que preciso",
-          "difficultToUse": "O Louez é demasiado difícil de usar",
-          "noLongerNeeded": "Já não preciso do Louez",
-          "switchedService": "Uso outra solução",
-          "technicalIssues": "Tive demasiados problemas técnicos",
-          "privacyConcerns": "Tenho preocupações com a privacidade",
-          "other": "Outro motivo"
-        },
-        "continue": "Continuar",
-        "back": "Voltar",
-        "title": "Eliminar a sua conta",
+        "accountDeletion": {
+          "reasonTitle": "Antes de sair",
+          "reasonDescription": "Porque está a deixar o Louez? A resposta é opcional e guardada sem ligação à sua identidade.",
+          "reasons": {
+            "tooExpensive": "O preço é demasiado elevado",
+            "missingFeatures": "Faltam funcionalidades de que preciso",
+            "difficultToUse": "O Louez é demasiado difícil de usar",
+            "noLongerNeeded": "Já não preciso do Louez",
+            "switchedService": "Uso outra solução",
+            "technicalIssues": "Tive demasiados problemas técnicos",
+            "privacyConcerns": "Tenho preocupações com a privacidade",
+            "other": "Outro motivo"
+          },
+          "continue": "Continuar",
+          "back": "Voltar",
+          "title": "Eliminar a sua conta",
           "description": "Reveja as consequências antes de continuar. A eliminação não pode ser anulada. Os comprovativos de faturação da Louez exigidos por lei podem permanecer arquivados.",
           "storesDeleted": "Lojas eliminadas com todos os respetivos dados ativos:",
           "membershipsLeft": "Também sairá de {count, plural, one {# outra loja} other {# outras lojas}} das quais é membro.",
@@ -5372,12 +5372,11 @@
           "heading": "Onde quer receber reservas?",
           "subheading": "Ative os canais que quiser: partilham o mesmo catálogo, o mesmo stock e o mesmo motor de reservas.",
           "marketplace": {
-            "name": "Marketplace Louez",
-            "description": "Os seus produtos aparecem na pesquisa pública do marketplace, com reserva direta.",
+            "description": "Os seus produtos aparecem na pesquisa pública da reeent, com reserva direta.",
             "recommended": "Recomendado",
-            "enableLabel": "Ativar o canal marketplace",
+            "enableLabel": "Ativar o canal reeent",
             "benefits": {
-              "visibility": "Novos clientes vindos da pesquisa do marketplace.",
+              "visibility": "Novos clientes vindos da pesquisa da reeent.",
               "seo": "Uma página dedicada ao seu negócio, indexada pelos motores de busca.",
               "free": "Gratuito no lançamento, sem comissão sobre as suas reservas."
             }
@@ -5386,13 +5385,11 @@
             "name": "A minha loja online",
             "description": "O seu site de reservas, disponível assim que a loja puder ser publicada.",
             "alwaysOn": "Sempre ativa",
-            "note": "Este canal não se desativa: é ele que trata das reservas, incluindo as que vêm do marketplace.",
             "viewAction": "Ver a minha loja",
             "customizeAction": "Personalizar o aspeto"
           }
         },
         "status": {
-          "label": "Estado",
           "values": {
             "setup_required": "Configuração necessária",
             "pending": "A aguardar publicação",
@@ -5407,10 +5404,10 @@
           }
         },
         "checklist": {
+          "openAction": "Checklist de publicação",
           "title": "Checklist de publicação",
-          "description": "A sua loja é publicada no marketplace assim que todos estes pontos estiverem validados.",
+          "description": "A sua loja é publicada na reeent assim que todos estes pontos forem validados.",
           "progress": "{done} de {total} concluídos",
-          "completeDescription": "Está tudo pronto: a sua loja segue na próxima sincronização.",
           "fixAction": "Concluir",
           "doneLabel": "Validado",
           "items": {
@@ -5438,12 +5435,14 @@
           }
         },
         "claim": {
-          "title": "O seu estabelecimento pode já estar no marketplace",
+          "openAction": "Fichas correspondentes",
+          "title": "O seu negócio pode já estar na reeent",
           "description": "Confirme apenas uma ficha que reconheça como sendo o seu estabelecimento. As fichas nunca são associadas automaticamente.",
           "confirmAction": "Este é o meu estabelecimento",
           "noneAction": "Nenhum destes estabelecimentos",
+          "linkedAction": "Ficha associada",
           "linkedTitle": "Ficha do diretório associada",
-          "linkedDescription": "O marketplace manterá a ficha existente e o respetivo URL quando publicar.",
+          "linkedDescription": "A reeent manterá a ficha existente e o seu URL na publicação.",
           "linkedFallback": "Estabelecimento associado",
           "mergeHint": "Esta ficha será fundida com a sua loja quando for publicada.",
           "unlinkAction": "Remover associação",
@@ -5453,22 +5452,11 @@
           "dismissedToast": "Nenhuma ficha selecionada.",
           "unlinkedToast": "Associação ao estabelecimento removida."
         },
-        "mapping": {
-          "title": "Correspondência de categorias",
-          "description": "Associe cada uma das suas categorias a uma categoria do marketplace para que os seus produtos apareçam nas pesquisas certas.",
-          "none": "Sem correspondência",
-          "fallbackHint": "O catálogo do marketplace está indisponível. Introduza diretamente o identificador da categoria, em minúsculas e com hífenes.",
-          "fallbackPlaceholder": "velo-vtt-electrique",
-          "invalidSlug": "Identificador inválido: apenas minúsculas, algarismos e hífenes.",
-          "empty": "Ainda não criou nenhuma categoria.",
-          "emptyAction": "Criar uma categoria",
-          "saved": "Correspondências guardadas."
-        },
         "disable": {
-          "title": "Desativar o marketplace?",
-          "description": "Os seus produtos deixarão de ser oferecidos no marketplace. Pode reativar o canal quando quiser.",
+          "title": "Desativar a reeent?",
+          "description": "Os seus produtos deixarão de ser propostos na reeent. Pode reativar o canal a qualquer momento.",
           "consequences": {
-            "search": "Os seus produtos desaparecem rapidamente da pesquisa do marketplace.",
+            "search": "Os seus produtos desaparecem rapidamente da pesquisa da reeent.",
             "redirect": "As páginas de produto já indexadas redirecionam para a ficha do seu negócio.",
             "links": "A sua ficha continua online no diretório e os seus links existentes continuam a funcionar."
           },
@@ -5476,8 +5464,8 @@
           "cancel": "Cancelar"
         },
         "toasts": {
-          "enabled": "Canal marketplace ativado.",
-          "disabled": "Canal marketplace desativado.",
+          "enabled": "Canal reeent ativado.",
+          "disabled": "Canal reeent desativado.",
           "termsAccepted": "Condições do marketplace aceites."
         },
         "cohort": {

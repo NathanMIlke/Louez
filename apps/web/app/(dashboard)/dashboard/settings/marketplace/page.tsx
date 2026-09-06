@@ -1,18 +1,16 @@
 import { redirect } from "next/navigation";
 
-import { asc, eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
 import { getMarketplaceChannelState, getMarketplaceCohortStatus } from "@louez/api/services";
-import { categories, db } from "@louez/db";
 
 import { env } from "@/env";
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
 import { fetchMarketplaceMatches, inferMarketplaceMatchCity } from "@/lib/marketplace-match";
-import { fetchMarketplaceTaxonomy } from "@/lib/marketplace-taxonomy";
 import { getCurrentStore } from "@/lib/store-context";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 
+import { DirectoryClaimDialog } from "./directory-claim-dialog";
 import { MarketplaceChannelForm } from "./marketplace-channel-form";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -29,14 +27,9 @@ export default async function MarketplaceChannelSettingsPage() {
   const t = await getTranslations("dashboard.settings.salesChannels");
 
   const channelState = await getMarketplaceChannelState({ storeId: store.id });
-  const [storeCategories, taxonomy, matchCandidates, cohort] = await Promise.all([
-    db
-      .select({ id: categories.id, name: categories.name })
-      .from(categories)
-      .where(eq(categories.storeId, store.id))
-      .orderBy(asc(categories.order), asc(categories.name)),
-    fetchMarketplaceTaxonomy(),
-    channelState.channel?.enabledByOwner
+  const isEnabled = channelState.channel?.enabledByOwner === true;
+  const [matchCandidates, cohort] = await Promise.all([
+    isEnabled
       ? fetchMarketplaceMatches({
           name: store.name,
           latitude: store.latitude,
@@ -47,15 +40,24 @@ export default async function MarketplaceChannelSettingsPage() {
     getMarketplaceCohortStatus(env.REEENT_LAUNCH_COHORT_SIZE),
   ]);
 
+  const claimedBusinessId = isEnabled ? (channelState.channel?.claimedBusinessId ?? null) : null;
+  const candidates = matchCandidates?.slice(0, 3) ?? [];
+
   return (
-    <SettingsPageShell title={t("title")} description={t("description")} width="wide">
+    <SettingsPageShell
+      title={t("title")}
+      description={t("description")}
+      width="wide"
+      actions={
+        isEnabled && (claimedBusinessId !== null || candidates.length > 0) ? (
+          <DirectoryClaimDialog candidates={candidates} claimedBusinessId={claimedBusinessId} />
+        ) : undefined
+      }
+    >
       <MarketplaceChannelForm
         channelState={channelState}
         cohortRemaining={cohort.remaining}
-        matchCandidates={matchCandidates?.slice(0, 3) ?? null}
-        storeCategories={storeCategories}
         storefrontUrl={getStorefrontUrl(store.slug, "/")}
-        taxonomy={taxonomy}
       />
     </SettingsPageShell>
   );

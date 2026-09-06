@@ -4887,22 +4887,22 @@
         "deleteAccount": "Konto löschen",
         "deleteAccountDescription": "Löscht Ihr Konto, Ihre Shops und deren aktive Daten",
         "deleteAccountWarning": "Diese Aktion ist unwiderruflich. Nur gesetzlich vorgeschriebene Unterlagen dürfen in einem getrennten Archiv verbleiben.",
-      "accountDeletion": {
-        "reasonTitle": "Bevor Sie gehen",
-        "reasonDescription": "Warum verlassen Sie Louez? Ihre Antwort ist freiwillig und wird ohne Bezug zu Ihrer Identität gespeichert.",
-        "reasons": {
-          "tooExpensive": "Der Preis ist zu hoch",
-          "missingFeatures": "Mir fehlen Funktionen",
-          "difficultToUse": "Louez ist zu schwer zu bedienen",
-          "noLongerNeeded": "Ich brauche Louez nicht mehr",
-          "switchedService": "Ich nutze eine andere Lösung",
-          "technicalIssues": "Ich hatte zu viele technische Probleme",
-          "privacyConcerns": "Ich habe Datenschutzbedenken",
-          "other": "Anderer Grund"
-        },
-        "continue": "Weiter",
-        "back": "Zurück",
-        "title": "Konto löschen",
+        "accountDeletion": {
+          "reasonTitle": "Bevor Sie gehen",
+          "reasonDescription": "Warum verlassen Sie Louez? Ihre Antwort ist freiwillig und wird ohne Bezug zu Ihrer Identität gespeichert.",
+          "reasons": {
+            "tooExpensive": "Der Preis ist zu hoch",
+            "missingFeatures": "Mir fehlen Funktionen",
+            "difficultToUse": "Louez ist zu schwer zu bedienen",
+            "noLongerNeeded": "Ich brauche Louez nicht mehr",
+            "switchedService": "Ich nutze eine andere Lösung",
+            "technicalIssues": "Ich hatte zu viele technische Probleme",
+            "privacyConcerns": "Ich habe Datenschutzbedenken",
+            "other": "Anderer Grund"
+          },
+          "continue": "Weiter",
+          "back": "Zurück",
+          "title": "Konto löschen",
           "description": "Prüfen Sie die Folgen, bevor Sie fortfahren. Die Löschung kann nicht rückgängig gemacht werden. Gesetzlich vorgeschriebene Louez-Abrechnungsbelege können archiviert bleiben.",
           "storesDeleted": "Diese Shops und ihre aktiven Daten werden gelöscht:",
           "membershipsLeft": "Sie verlassen außerdem {count, plural, one {# weiteren Shop} other {# weitere Shops}}, in denen Sie Mitglied sind.",
@@ -5372,12 +5372,11 @@
           "heading": "Wo möchten Sie Buchungen erhalten?",
           "subheading": "Aktivieren Sie so viele Kanäle, wie Sie möchten: Sie teilen denselben Katalog, denselben Bestand und dieselbe Buchungsengine.",
           "marketplace": {
-            "name": "Louez Marketplace",
-            "description": "Ihre Produkte erscheinen in der öffentlichen Marketplace-Suche, mit direkter Buchung.",
+            "description": "Ihre Produkte erscheinen in der öffentlichen Suche von reeent, mit Direktbuchung.",
             "recommended": "Empfohlen",
-            "enableLabel": "Marketplace-Kanal aktivieren",
+            "enableLabel": "reeent-Kanal aktivieren",
             "benefits": {
-              "visibility": "Neue Kunden aus der Marketplace-Suche.",
+              "visibility": "Neue Kunden aus der reeent-Suche.",
               "seo": "Eine eigene Seite für Ihr Unternehmen, von Suchmaschinen indexiert.",
               "free": "Zum Start kostenlos, ohne Provision auf Ihre Buchungen."
             }
@@ -5386,13 +5385,11 @@
             "name": "Mein Onlineshop",
             "description": "Ihre Buchungsseite, verfügbar sobald Ihr Shop veröffentlicht werden kann.",
             "alwaysOn": "Immer aktiv",
-            "note": "Dieser Kanal lässt sich nicht deaktivieren: Er wickelt alle Buchungen ab, auch die aus dem Marketplace.",
             "viewAction": "Meinen Shop ansehen",
             "customizeAction": "Erscheinungsbild anpassen"
           }
         },
         "status": {
-          "label": "Status",
           "values": {
             "setup_required": "Einrichtung erforderlich",
             "pending": "Wartet auf Veröffentlichung",
@@ -5407,10 +5404,10 @@
           }
         },
         "checklist": {
+          "openAction": "Veröffentlichungs-Checkliste",
           "title": "Veröffentlichungs-Checkliste",
-          "description": "Ihr Shop geht im Marketplace live, sobald alle Punkte erfüllt sind.",
+          "description": "Ihr Shop wird auf reeent veröffentlicht, sobald alle Punkte erfüllt sind.",
           "progress": "{done} von {total} erfüllt",
-          "completeDescription": "Alles bereit: Ihr Shop geht mit der nächsten Synchronisierung raus.",
           "fixAction": "Erledigen",
           "doneLabel": "Erfüllt",
           "items": {
@@ -5438,12 +5435,14 @@
           }
         },
         "claim": {
-          "title": "Ihr Betrieb ist möglicherweise bereits auf dem Marktplatz",
+          "openAction": "Passende Einträge",
+          "title": "Ihr Unternehmen ist vielleicht schon auf reeent",
           "description": "Bestätigen Sie nur einen Eintrag, den Sie eindeutig als Ihren Betrieb erkennen. Einträge werden nie automatisch verknüpft.",
           "confirmAction": "Das ist mein Betrieb",
           "noneAction": "Keiner dieser Betriebe",
+          "linkedAction": "Verknüpfter Eintrag",
           "linkedTitle": "Verzeichniseintrag verknüpft",
-          "linkedDescription": "Der Marktplatz behält bei der Veröffentlichung den bestehenden Eintrag und seine URL bei.",
+          "linkedDescription": "reeent behält den bestehenden Eintrag und seine URL bei der Veröffentlichung bei.",
           "linkedFallback": "Verknüpfter Betrieb",
           "mergeHint": "Dieser Eintrag wird bei der Veröffentlichung mit Ihrem Shop zusammengeführt.",
           "unlinkAction": "Verknüpfung aufheben",
@@ -5453,22 +5452,11 @@
           "dismissedToast": "Kein Verzeichniseintrag ausgewählt.",
           "unlinkedToast": "Verknüpfung zum Betrieb aufgehoben."
         },
-        "mapping": {
-          "title": "Kategoriezuordnung",
-          "description": "Ordnen Sie jede Ihrer Kategorien einer Marketplace-Kategorie zu, damit Ihre Produkte in den richtigen Suchen erscheinen.",
-          "none": "Keine Zuordnung",
-          "fallbackHint": "Der Marketplace-Katalog ist nicht verfügbar. Geben Sie die Kategorie-Kennung direkt ein, in Kleinbuchstaben mit Bindestrichen.",
-          "fallbackPlaceholder": "velo-vtt-electrique",
-          "invalidSlug": "Ungültige Kennung: nur Kleinbuchstaben, Ziffern und Bindestriche.",
-          "empty": "Sie haben noch keine Kategorie angelegt.",
-          "emptyAction": "Kategorie anlegen",
-          "saved": "Zuordnungen gespeichert."
-        },
         "disable": {
-          "title": "Marketplace deaktivieren?",
-          "description": "Ihre Produkte werden im Marketplace nicht mehr angeboten. Sie können den Kanal jederzeit wieder aktivieren.",
+          "title": "reeent deaktivieren?",
+          "description": "Ihre Produkte werden nicht mehr auf reeent angeboten. Sie können den Kanal jederzeit wieder aktivieren.",
           "consequences": {
-            "search": "Ihre Produkte verschwinden zügig aus der Marketplace-Suche.",
+            "search": "Ihre Produkte verschwinden schnell aus der reeent-Suche.",
             "redirect": "Bereits indexierte Produktseiten leiten auf Ihren Unternehmenseintrag weiter.",
             "links": "Ihr Eintrag bleibt im Verzeichnis online und Ihre bestehenden Links funktionieren weiter."
           },
@@ -5476,8 +5464,8 @@
           "cancel": "Abbrechen"
         },
         "toasts": {
-          "enabled": "Marketplace-Kanal aktiviert.",
-          "disabled": "Marketplace-Kanal deaktiviert.",
+          "enabled": "reeent-Kanal aktiviert.",
+          "disabled": "reeent-Kanal deaktiviert.",
           "termsAccepted": "Marketplace-Bedingungen akzeptiert."
         },
         "cohort": {

@@ -7,12 +7,10 @@ import {
   dismissDirectoryClaim as dismissDirectoryClaimService,
   enableMarketplaceChannel as enableMarketplaceChannelService,
   getMarketplaceChannelState as getMarketplaceChannelStateService,
-  saveCategoryMappings as saveCategoryMappingsService,
 } from "@louez/api/services";
 import {
   directoryClaimSchema,
   dismissDirectoryClaimSchema,
-  marketplaceCategoryMappingsSchema,
   marketplaceChannelEnableSchema,
 } from "@louez/validations";
 import { revalidatePath } from "next/cache";
@@ -72,25 +70,6 @@ export async function disableMarketplaceChannel() {
   try {
     const state = await disableMarketplaceChannelService({
       storeId: context.storeId,
-    });
-    revalidateMarketplaceSettings();
-    return { success: true, state };
-  } catch (error) {
-    return serviceError(error);
-  }
-}
-
-export async function saveCategoryMappings(input: unknown) {
-  const context = await getOwnerContext();
-  if (!context) return { error: "errors.unauthorized" };
-
-  const parsed = marketplaceCategoryMappingsSchema.safeParse(input);
-  if (!parsed.success) return { error: "errors.invalidData" };
-
-  try {
-    const state = await saveCategoryMappingsService({
-      storeId: context.storeId,
-      mappings: parsed.data,
     });
     revalidateMarketplaceSettings();
     return { success: true, state };

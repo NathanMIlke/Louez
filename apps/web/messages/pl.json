@@ -4887,22 +4887,22 @@
         "deleteAccount": "Usuń konto",
         "deleteAccountDescription": "Usuń konto, sklepy i ich aktywne dane",
         "deleteAccountWarning": "Ta operacja jest nieodwracalna. Tylko dokumenty wymagane prawem mogą pozostać w oddzielnym archiwum.",
-      "accountDeletion": {
-        "reasonTitle": "Zanim odejdziesz",
-        "reasonDescription": "Dlaczego rezygnujesz z Louez? Odpowiedź jest opcjonalna i zapisywana bez powiązania z Twoją tożsamością.",
-        "reasons": {
-          "tooExpensive": "Cena jest zbyt wysoka",
-          "missingFeatures": "Brakuje mi potrzebnych funkcji",
-          "difficultToUse": "Louez jest zbyt trudne w obsłudze",
-          "noLongerNeeded": "Nie potrzebuję już Louez",
-          "switchedService": "Korzystam z innego rozwiązania",
-          "technicalIssues": "Wystąpiło zbyt wiele problemów technicznych",
-          "privacyConcerns": "Mam obawy dotyczące prywatności",
-          "other": "Inny powód"
-        },
-        "continue": "Kontynuuj",
-        "back": "Wstecz",
-        "title": "Usuń konto",
+        "accountDeletion": {
+          "reasonTitle": "Zanim odejdziesz",
+          "reasonDescription": "Dlaczego rezygnujesz z Louez? Odpowiedź jest opcjonalna i zapisywana bez powiązania z Twoją tożsamością.",
+          "reasons": {
+            "tooExpensive": "Cena jest zbyt wysoka",
+            "missingFeatures": "Brakuje mi potrzebnych funkcji",
+            "difficultToUse": "Louez jest zbyt trudne w obsłudze",
+            "noLongerNeeded": "Nie potrzebuję już Louez",
+            "switchedService": "Korzystam z innego rozwiązania",
+            "technicalIssues": "Wystąpiło zbyt wiele problemów technicznych",
+            "privacyConcerns": "Mam obawy dotyczące prywatności",
+            "other": "Inny powód"
+          },
+          "continue": "Kontynuuj",
+          "back": "Wstecz",
+          "title": "Usuń konto",
           "description": "Przed kontynuowaniem sprawdź skutki. Usunięcia nie można cofnąć. Dokumenty rozliczeniowe Louez wymagane prawem mogą pozostać w archiwum.",
           "storesDeleted": "Sklepy usuwane wraz ze wszystkimi aktywnymi danymi:",
           "membershipsLeft": "Opuścisz również {count, plural, one {# inny sklep} other {# inne sklepy}}, w których jesteś członkiem.",
@@ -5372,12 +5372,11 @@
           "heading": "Gdzie chcesz otrzymywać rezerwacje?",
           "subheading": "Włącz tyle kanałów, ile chcesz: korzystają z tego samego katalogu, tych samych stanów i tego samego silnika rezerwacji.",
           "marketplace": {
-            "name": "Marketplace Louez",
-            "description": "Twoje produkty pojawiają się w publicznej wyszukiwarce marketplace, z rezerwacją bezpośrednią.",
+            "description": "Twoje produkty pojawiają się w publicznej wyszukiwarce reeent, z bezpośrednią rezerwacją.",
             "recommended": "Zalecane",
-            "enableLabel": "Włącz kanał marketplace",
+            "enableLabel": "Włącz kanał reeent",
             "benefits": {
-              "visibility": "Nowi klienci z wyszukiwarki marketplace.",
+              "visibility": "Nowi klienci z wyszukiwarki reeent.",
               "seo": "Dedykowana strona Twojej firmy, indeksowana przez wyszukiwarki.",
               "free": "Bezpłatnie na start, bez prowizji od Twoich rezerwacji."
             }
@@ -5386,13 +5385,11 @@
             "name": "Mój sklep internetowy",
             "description": "Twoja strona rezerwacji, dostępna, gdy tylko sklep nadaje się do publikacji.",
             "alwaysOn": "Zawsze aktywny",
-            "note": "Tego kanału nie można wyłączyć: to on obsługuje rezerwacje, także te z marketplace.",
             "viewAction": "Zobacz mój sklep",
             "customizeAction": "Dostosuj wygląd"
           }
         },
         "status": {
-          "label": "Status",
           "values": {
             "setup_required": "Wymagana konfiguracja",
             "pending": "Oczekuje na publikację",
@@ -5407,10 +5404,10 @@
           }
         },
         "checklist": {
+          "openAction": "Lista kontrolna publikacji",
           "title": "Lista kontrolna publikacji",
-          "description": "Twój sklep trafia na marketplace, gdy tylko wszystkie te punkty zostaną spełnione.",
+          "description": "Twój sklep zostanie opublikowany na reeent, gdy wszystkie punkty będą spełnione.",
           "progress": "{done} z {total} spełnionych",
-          "completeDescription": "Wszystko gotowe: sklep trafi tam przy najbliższej synchronizacji.",
           "fixAction": "Uzupełnij",
           "doneLabel": "Spełnione",
           "items": {
@@ -5438,12 +5435,14 @@
           }
         },
         "claim": {
-          "title": "Twoja firma może już znajdować się na marketplace",
+          "openAction": "Pasujące wpisy",
+          "title": "Twoja firma może już być na reeent",
           "description": "Potwierdź tylko wpis, który rozpoznajesz jako swoją firmę. Wpisy nigdy nie są łączone automatycznie.",
           "confirmAction": "To jest moja firma",
           "noneAction": "Żadna z tych firm",
+          "linkedAction": "Powiązany wpis",
           "linkedTitle": "Wpis w katalogu połączony",
-          "linkedDescription": "Marketplace zachowa istniejący wpis i jego adres URL podczas publikacji.",
+          "linkedDescription": "reeent zachowa istniejący wpis i jego adres URL podczas publikacji.",
           "linkedFallback": "Połączona firma",
           "mergeHint": "Ten wpis zostanie połączony z Twoim sklepem podczas publikacji.",
           "unlinkAction": "Usuń połączenie",
@@ -5453,22 +5452,11 @@
           "dismissedToast": "Nie wybrano wpisu z katalogu.",
           "unlinkedToast": "Połączenie z firmą zostało usunięte."
         },
-        "mapping": {
-          "title": "Dopasowanie kategorii",
-          "description": "Przypisz każdą ze swoich kategorii do kategorii marketplace, aby Twoje produkty pojawiały się we właściwych wynikach wyszukiwania.",
-          "none": "Brak dopasowania",
-          "fallbackHint": "Katalog marketplace jest niedostępny. Wpisz identyfikator kategorii bezpośrednio, małymi literami z myślnikami.",
-          "fallbackPlaceholder": "velo-vtt-electrique",
-          "invalidSlug": "Nieprawidłowy identyfikator: tylko małe litery, cyfry i myślniki.",
-          "empty": "Nie masz jeszcze żadnej kategorii.",
-          "emptyAction": "Utwórz kategorię",
-          "saved": "Dopasowania zapisane."
-        },
         "disable": {
-          "title": "Wyłączyć marketplace?",
-          "description": "Twoje produkty nie będą już oferowane na marketplace. Kanał możesz włączyć ponownie w dowolnym momencie.",
+          "title": "Wyłączyć reeent?",
+          "description": "Twoje produkty nie będą już oferowane na reeent. Kanał możesz włączyć ponownie w dowolnym momencie.",
           "consequences": {
-            "search": "Twoje produkty szybko znikają z wyszukiwarki marketplace.",
+            "search": "Twoje produkty szybko znikają z wyszukiwarki reeent.",
             "redirect": "Zaindeksowane strony produktów przekierowują do wizytówki Twojej firmy.",
             "links": "Twoja wizytówka pozostaje w katalogu, a istniejące linki nadal działają."
           },
@@ -5476,8 +5464,8 @@
           "cancel": "Anuluj"
         },
         "toasts": {
-          "enabled": "Kanał marketplace włączony.",
-          "disabled": "Kanał marketplace wyłączony.",
+          "enabled": "Kanał reeent włączony.",
+          "disabled": "Kanał reeent wyłączony.",
           "termsAccepted": "Warunki marketplace zaakceptowane."
         },
         "cohort": {

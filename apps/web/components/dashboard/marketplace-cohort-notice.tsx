@@ -21,8 +21,8 @@ export interface MarketplaceCohortNoticeProps {
  * "Offre reeent à vie" surface, shared by the marketplace settings page and the
  * dashboard home so the promise reads identically wherever it appears.
  *
- * Two states, never both: a store already in the launch cohort keeps a quiet
- * badge for good; a store outside it sees the remaining seats — and nothing at
+ * Two states, never both: a store already in the launch cohort keeps a quiet,
+ * neutral badge for good; a store outside it sees the remaining seats — and nothing at
  * all once the cohort is full, because there is no longer anything to promise.
  */
 export const MarketplaceCohortNotice = ({
@@ -38,11 +38,11 @@ export const MarketplaceCohortNotice = ({
     return (
       <div
         className={cn(
-          "bg-badge-success-background/60 ring-badge-success-foreground/15 flex items-start gap-3 rounded-xl p-4 ring-1 ring-inset",
+          "bg-muted/40 ring-border flex items-start gap-3 rounded-xl p-4 ring-1 ring-inset",
           className,
         )}
       >
-        <DashboardIconTile icon={RewardIcon} accent="success" className="bg-background/70" />
+        <DashboardIconTile icon={RewardIcon} className="bg-background/70" />
         <div className="min-w-0 space-y-1">
           <p className="text-sm font-medium">{t("memberTitle")}</p>
           {cohortRank !== null && (

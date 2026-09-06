@@ -5021,22 +5021,22 @@
         "deleteAccount": "Delete account",
         "deleteAccountDescription": "Delete your account, your stores and their active data",
         "deleteAccountWarning": "This action is irreversible. Only records required by law may remain in a separate archive.",
-      "accountDeletion": {
-        "reasonTitle": "Before you go",
-        "reasonDescription": "Why are you leaving Louez? Your answer is optional and saved without your identity.",
-        "reasons": {
-          "tooExpensive": "The price is too high",
-          "missingFeatures": "I need features that are missing",
-          "difficultToUse": "Louez is too difficult to use",
-          "noLongerNeeded": "I no longer need Louez",
-          "switchedService": "I use another solution",
-          "technicalIssues": "I had too many technical issues",
-          "privacyConcerns": "I have privacy concerns",
-          "other": "Another reason"
-        },
-        "continue": "Continue",
-        "back": "Back",
-        "title": "Delete your account",
+        "accountDeletion": {
+          "reasonTitle": "Before you go",
+          "reasonDescription": "Why are you leaving Louez? Your answer is optional and saved without your identity.",
+          "reasons": {
+            "tooExpensive": "The price is too high",
+            "missingFeatures": "I need features that are missing",
+            "difficultToUse": "Louez is too difficult to use",
+            "noLongerNeeded": "I no longer need Louez",
+            "switchedService": "I use another solution",
+            "technicalIssues": "I had too many technical issues",
+            "privacyConcerns": "I have privacy concerns",
+            "other": "Another reason"
+          },
+          "continue": "Continue",
+          "back": "Back",
+          "title": "Delete your account",
           "description": "Review what will happen before you continue. Deletion cannot be undone. Louez billing records required by law may remain archived.",
           "storesDeleted": "Stores deleted with all their active data:",
           "membershipsLeft": "You will also leave {count, plural, one {# other store} other {# other stores}} where you are a member.",
@@ -5372,12 +5372,11 @@
           "heading": "Where do you want to receive bookings?",
           "subheading": "Turn on as many channels as you like: they share the same catalog, the same stock and the same booking engine.",
           "marketplace": {
-            "name": "Louez Marketplace",
-            "description": "Your products show up in the public marketplace search, with direct booking.",
+            "description": "Your products show up in reeent's public search, with direct booking.",
             "recommended": "Recommended",
-            "enableLabel": "Enable the marketplace channel",
+            "enableLabel": "Enable the reeent channel",
             "benefits": {
-              "visibility": "New customers coming from marketplace search.",
+              "visibility": "New customers coming from reeent search.",
               "seo": "A dedicated page for your business, indexed by search engines.",
               "free": "Free at launch, with no commission on your bookings."
             }
@@ -5386,13 +5385,11 @@
             "name": "My online store",
             "description": "Your booking site, available as soon as your store is publishable.",
             "alwaysOn": "Always on",
-            "note": "This channel cannot be turned off: it handles every booking, including those coming from the marketplace.",
             "viewAction": "View my store",
             "customizeAction": "Customize the appearance"
           }
         },
         "status": {
-          "label": "Status",
           "values": {
             "setup_required": "Setup required",
             "pending": "Waiting for publication",
@@ -5407,10 +5404,10 @@
           }
         },
         "checklist": {
+          "openAction": "Publication checklist",
           "title": "Publication checklist",
-          "description": "Your store goes live on the marketplace as soon as every item is checked.",
+          "description": "Your store goes live on reeent as soon as every item is checked.",
           "progress": "{done} of {total} completed",
-          "completeDescription": "Everything is ready: your store goes out with the next sync.",
           "fixAction": "Complete",
           "doneLabel": "Done",
           "items": {
@@ -5438,12 +5435,14 @@
           }
         },
         "claim": {
-          "title": "Your business may already be on the marketplace",
+          "openAction": "Matching listings",
+          "title": "Your business may already be on reeent",
           "description": "Only confirm a listing you recognize as your business. Listings are never matched automatically.",
           "confirmAction": "This is my business",
           "noneAction": "None of these businesses",
+          "linkedAction": "Linked listing",
           "linkedTitle": "Directory listing linked",
-          "linkedDescription": "The marketplace will keep the existing listing and its URL when you publish.",
+          "linkedDescription": "reeent will keep the existing listing and its URL when you publish.",
           "linkedFallback": "Linked business",
           "mergeHint": "This listing will be merged with your store when it is published.",
           "unlinkAction": "Remove link",
@@ -5453,22 +5452,11 @@
           "dismissedToast": "No directory listing selected.",
           "unlinkedToast": "Business link removed."
         },
-        "mapping": {
-          "title": "Category mapping",
-          "description": "Map each of your categories to a marketplace category so your products show up in the right searches.",
-          "none": "No mapping",
-          "fallbackHint": "The marketplace catalog is unavailable. Enter the category identifier directly, in lowercase with dashes.",
-          "fallbackPlaceholder": "velo-vtt-electrique",
-          "invalidSlug": "Invalid identifier: lowercase letters, digits and dashes only.",
-          "empty": "You have not created a category yet.",
-          "emptyAction": "Create a category",
-          "saved": "Mappings saved."
-        },
         "disable": {
-          "title": "Turn off the marketplace?",
-          "description": "Your products will no longer be offered on the marketplace. You can turn the channel back on at any time.",
+          "title": "Turn off reeent?",
+          "description": "Your products will no longer be offered on reeent. You can turn the channel back on at any time.",
           "consequences": {
-            "search": "Your products disappear from marketplace search promptly.",
+            "search": "Your products quickly disappear from reeent search.",
             "redirect": "Already indexed product pages redirect to your business listing.",
             "links": "Your listing stays online in the directory and your existing links keep working."
           },
@@ -5476,8 +5464,8 @@
           "cancel": "Cancel"
         },
         "toasts": {
-          "enabled": "Marketplace channel enabled.",
-          "disabled": "Marketplace channel disabled.",
+          "enabled": "reeent channel enabled.",
+          "disabled": "reeent channel disabled.",
           "termsAccepted": "Marketplace terms accepted."
         },
         "cohort": {

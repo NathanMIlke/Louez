@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Area,
   AreaChart,
@@ -14,7 +14,7 @@ import type { TooltipContentProps } from "recharts";
 import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 
 import { ChartColumnIcon } from "@louez/ui/icons";
-import { formatCurrency, getCurrencySymbol } from "@louez/utils";
+import { formatCurrency } from "@louez/utils";
 
 import { DashboardEmptyState } from "@/components/dashboard/shared/dashboard-empty-state";
 
@@ -32,7 +32,13 @@ interface RevenueChartProps {
 
 export const RevenueChart = ({ data, currency = "EUR" }: RevenueChartProps) => {
   const t = useTranslations("dashboard.statistics");
-  const currencySymbol = getCurrencySymbol(currency);
+  const locale = useLocale();
+  const axisFormat = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    notation: "compact",
+    maximumFractionDigits: 2,
+  });
 
   if (data.every((point) => point.revenue === 0)) {
     return <DashboardEmptyState icon={ChartColumnIcon} description={t("noRevenueData")} />;
@@ -60,8 +66,8 @@ export const RevenueChart = ({ data, currency = "EUR" }: RevenueChartProps) => {
             tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
             tickLine={false}
             axisLine={false}
-            width={48}
-            tickFormatter={(value: number) => `${(value / 1000).toFixed(0)}k${currencySymbol}`}
+            width={64}
+            tickFormatter={(value: number) => axisFormat.format(value)}
           />
           <Tooltip
             content={({ active, payload, label }: TooltipContentProps<ValueType, NameType>) => {
@@ -70,7 +76,8 @@ export const RevenueChart = ({ data, currency = "EUR" }: RevenueChartProps) => {
                   <div className="bg-background rounded-lg border p-3 shadow-md">
                     <p className="font-medium">{label}</p>
                     <p className="text-muted-foreground text-sm">
-                      {t("revenueAbbrev")}: {formatCurrency(payload[0].value as number, currency)}
+                      {t("revenueAbbrev")}:{" "}
+                      {formatCurrency(payload[0].value as number, currency, locale)}
                     </p>
                     <p className="text-muted-foreground text-sm">
                       {t("paymentsCount", { count: payload[0].payload.payments })}

@@ -2974,8 +2974,8 @@
       "totalRevenue": "Total receipts",
       "reservations": "Reservations",
       "avgPaymentInline": "average payment {amount}",
-      "occupancyRate": "Occupancy rate",
-      "upcomingRevenue": "Upcoming revenue",
+      "occupancyRate": "Estimated occupancy",
+      "upcomingRevenue": "Outstanding · upcoming bookings",
       "avgRentalDuration": "Average rental duration",
       "rentalActivity": "Rental activity",
       "topProducts": {
@@ -2987,7 +2987,9 @@
         "revenue": "Revenue",
         "units": "{count, plural, one {# unit} other {# units}}",
         "othersRow": "{count, plural, one {+ # other product} other {+ # other products}}",
-        "totalRow": "Total"
+        "totalRow": "Total",
+        "nonCatalog": "Items outside the catalog",
+        "unallocated": "Unallocated receipts"
       },
       "topCustomers": {
         "title": "Top customers",
@@ -3017,8 +3019,8 @@
       "onReservations": "on {count} reservations",
       "sinceBeginning": "since the beginning",
       "vsLastPeriod": "vs previous period",
-      "occupancySubtitle": "{count, plural, =0 {no active unit} one {of # available unit} other {of # available units}}",
-      "upcomingRevenueCount": "{count, plural, =0 {no confirmed reservation} one {# confirmed reservation} other {# confirmed reservations}}",
+      "occupancySubtitle": "{count, plural, one {# active unit · based on booking dates} other {# active units · based on booking dates}}",
+      "upcomingRevenueCount": "{count, plural, =0 {no upcoming bookings with a balance due} one {# upcoming booking with a balance due} other {# upcoming bookings with a balance due}}",
       "durationDays": "{days, plural, one {{days, number, ::.0} day} other {{days, number, ::.0} days}}",
       "durationHours": "{hours, plural, one {# hour} other {# hours}}",
       "noData": "Not enough data",

@@ -2935,8 +2935,8 @@
       "totalRevenue": "Incassi totali",
       "reservations": "Prenotazioni",
       "avgPaymentInline": "pagamento medio {amount}",
-      "occupancyRate": "Tasso di occupazione",
-      "upcomingRevenue": "Ricavi futuri",
+      "occupancyRate": "Occupazione stimata",
+      "upcomingRevenue": "Da incassare · prenotazioni future",
       "avgRentalDuration": "Durata media del noleggio",
       "rentalActivity": "Attività di noleggio",
       "topProducts": {
@@ -2948,7 +2948,9 @@
         "revenue": "Fatturato",
         "units": "{count, plural, one {# unita} other {# unita}}",
         "othersRow": "{count, plural, one {+ # altro prodotto} other {+ # altri prodotti}}",
-        "totalRow": "Totale"
+        "totalRow": "Totale",
+        "nonCatalog": "Articoli fuori catalogo",
+        "unallocated": "Incassi non attribuiti"
       },
       "topCustomers": {
         "title": "Migliori clienti",
@@ -2978,8 +2980,8 @@
       "onReservations": "su {count} prenotazioni",
       "sinceBeginning": "dall'inizio",
       "vsLastPeriod": "vs periodo precedente",
-      "occupancySubtitle": "{count, plural, =0 {nessuna unita attiva} one {su # unita disponibile} other {su # unita disponibili}}",
-      "upcomingRevenueCount": "{count, plural, =0 {nessuna prenotazione confermata} one {# prenotazione confermata} other {# prenotazioni confermate}}",
+      "occupancySubtitle": "{count, plural, one {# unità attiva · in base alle date di prenotazione} other {# unità attive · in base alle date di prenotazione}}",
+      "upcomingRevenueCount": "{count, plural, =0 {nessuna prenotazione futura con saldo dovuto} one {# prenotazione futura con saldo dovuto} other {# prenotazioni future con saldo dovuto}}",
       "durationDays": "{days, plural, one {{days, number, ::.0} giorno} other {{days, number, ::.0} giorni}}",
       "durationHours": "{hours, plural, one {# ora} other {# ore}}",
       "noData": "Dati insufficienti",

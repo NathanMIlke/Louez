@@ -22,7 +22,7 @@ test("product receipts use line totals, payment periods and store isolation", as
     sqlite.exec(`
       CREATE TABLE reservations (id TEXT, store_id TEXT);
       CREATE TABLE reservation_items (reservation_id TEXT, product_id TEXT, total_price REAL);
-      CREATE TABLE payments (reservation_id TEXT, amount REAL, payment_status TEXT, payment_type TEXT, paid_at TEXT, created_at TEXT);
+      CREATE TABLE payments (reservation_id TEXT, amount REAL, payment_status TEXT, payment_type TEXT, paid_at TEXT, created_at TEXT, refund_of_payment_id TEXT);
       INSERT INTO reservations VALUES ('booking', 'store'), ('foreign', 'other-store'), ('free', 'store');
       INSERT INTO reservation_items VALUES
         ('booking', 'free-product', 0), ('booking', 'bags', 28), ('booking', 'insurance', 28),
@@ -63,11 +63,16 @@ test("product receipts use line totals, payment periods and store isolation", as
     ) => {
       const date = dateFns.format(dateFns.subDays(new Date(), daysAgo), "yyyy-MM-dd HH:mm:ss");
       sqlite
-        .prepare("INSERT INTO payments VALUES (?, ?, ?, ?, ?, ?)")
+        .prepare(
+          "INSERT INTO payments (reservation_id,amount,payment_status,payment_type,paid_at,created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        )
         .run(reservationId, amount, status, type, paidAt ? date : null, date);
     };
     addPayment(70.05);
     addPayment(220.95);
+    sqlite.exec(
+      "INSERT INTO payments VALUES ('booking', 50, 'completed', 'rental', '2026-09-01', '2026-09-01', 'original-payment')",
+    );
     for (const [productId, expected] of [
       ["free-product", 0],
       ["bags", 28],

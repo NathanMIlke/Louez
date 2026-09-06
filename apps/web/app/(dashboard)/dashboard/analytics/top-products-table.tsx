@@ -30,7 +30,10 @@ interface TopProduct {
 interface TopProductsTableProps {
   products: TopProduct[];
   /** Allocated receipts of every product over the period, top 10 or not. */
-  allProductsRevenue: number;
+  catalogRevenue: number;
+  totalRevenue: number;
+  nonCatalogRevenue: number;
+  unallocatedRevenue: number;
   /** Distinct products that brought receipts over the period. */
   productCount: number;
 }
@@ -40,20 +43,26 @@ const RANK_VARIANTS = ["review", "expired", "pending"] as const;
 
 export const TopProductsTable = ({
   products,
-  allProductsRevenue,
+  catalogRevenue,
+  totalRevenue,
+  nonCatalogRevenue,
+  unallocatedRevenue,
   productCount,
 }: TopProductsTableProps) => {
   const t = useTranslations("dashboard.statistics");
 
-  if (products.length === 0) {
+  if (products.length === 0 && totalRevenue === 0) {
     return <DashboardEmptyState icon={ProductSolidIcon} description={t("noRentalData")} />;
   }
 
   // What the ten rows leave out, so the footer adds up to the receipts KPI.
   const othersCount = Math.max(productCount - products.length, 0);
   const othersRevenue =
-    allProductsRevenue -
-    products.reduce((sum, product) => sum + parseFloat(product.totalRevenue), 0);
+    catalogRevenue -
+    products.reduce(
+      (sum, product) => sum + Math.round(parseFloat(product.totalRevenue) * 100) / 100,
+      0,
+    );
 
   return (
     <div className="-mx-1 overflow-x-auto px-1">
@@ -115,11 +124,29 @@ export const TopProductsTable = ({
               </TableCell>
             </TableRow>
           )}
+          {nonCatalogRevenue !== 0 && (
+            <TableRow>
+              <TableCell colSpan={3}>{t("topProducts.nonCatalog")}</TableCell>
+              <TableCell className="hidden md:table-cell" />
+              <TableCell className="text-right tabular-nums whitespace-nowrap">
+                {formatCurrency(nonCatalogRevenue)}
+              </TableCell>
+            </TableRow>
+          )}
+          {unallocatedRevenue !== 0 && (
+            <TableRow>
+              <TableCell colSpan={3}>{t("topProducts.unallocated")}</TableCell>
+              <TableCell className="hidden md:table-cell" />
+              <TableCell className="text-right tabular-nums whitespace-nowrap">
+                {formatCurrency(unallocatedRevenue)}
+              </TableCell>
+            </TableRow>
+          )}
           <TableRow>
             <TableCell colSpan={3}>{t("topProducts.totalRow")}</TableCell>
             <TableCell className="hidden md:table-cell" />
             <TableCell className="text-right tabular-nums whitespace-nowrap">
-              {formatCurrency(allProductsRevenue)}
+              {formatCurrency(totalRevenue)}
             </TableCell>
           </TableRow>
         </TableFooter>

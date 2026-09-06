@@ -98,7 +98,14 @@ async function getProductRentalPaymentStats(params: {
     })
     .from(payments)
     .innerJoin(itemTotals, eq(payments.reservationId, itemTotals.reservationId))
-    .where(and(eq(payments.status, "completed"), eq(payments.type, "rental"), ...dateConditions));
+    .where(
+      and(
+        eq(payments.status, "completed"),
+        eq(payments.type, "rental"),
+        isNull(payments.refundOfPaymentId),
+        ...dateConditions,
+      ),
+    );
 
   return {
     revenue: parseFloat(result[0]?.revenue || "0"),

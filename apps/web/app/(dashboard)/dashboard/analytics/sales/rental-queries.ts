@@ -1,11 +1,10 @@
-import { endOfDay } from "date-fns";
-import { and, count, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, count, eq, gte, inArray, lt, sql } from "drizzle-orm";
 
-import { db } from "@louez/db";
+import { alias } from "drizzle-orm/mysql-core";
+import { db, effectiveProductQuantitySql, payments } from "@louez/db";
 import { products, reservationItems, reservations } from "@louez/db";
 
-import type { Period } from "../period";
-import { getWindowStart } from "./queries";
+import { getSalesGrowth, type SalesWindow } from "./util.sales-window";
 
 type ReservationStatus = (typeof reservations.status.enumValues)[number];
 
@@ -17,15 +16,6 @@ const BOOKED_STATUSES: ReservationStatus[] = ["pending", "confirmed", "ongoing",
 
 const MINUTES_PER_DAY = 1440;
 const MS_PER_DAY = MINUTES_PER_DAY * 60_000;
-
-/** Same rolling window as the receipts queries, bounded on both ends. */
-const getWindow = (period: Period) => {
-  const now = new Date();
-  const start = getWindowStart(period, now);
-  const end = endOfDay(now);
-
-  return { start, end, days: (end.getTime() - start.getTime()) / MS_PER_DAY };
-};
 
 export interface OccupancyStats {
   /** Occupied unit-days over available unit-days, in percent. */
@@ -39,8 +29,12 @@ export interface OccupancyStats {
  * item contributes `quantity × days` for the part of its stay that falls inside
  * the window, measured against the unit-days the active catalog could offer.
  */
-export async function getOccupancyStats(storeId: string, period: Period): Promise<OccupancyStats> {
-  const { start, end, days } = getWindow(period);
+export async function getOccupancyStats(
+  storeId: string,
+  window: SalesWindow,
+): Promise<OccupancyStats> {
+  const { start, end } = window;
+  const days = (end.getTime() - start.getTime()) / MS_PER_DAY;
 
   const [occupied, fleet] = await Promise.all([
     db
@@ -49,19 +43,29 @@ export async function getOccupancyStats(storeId: string, period: Period): Promis
       })
       .from(reservationItems)
       .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
+      .innerJoin(products, eq(reservationItems.productId, products.id))
       .where(
         and(
           eq(reservations.storeId, storeId),
+          eq(products.storeId, storeId),
+          eq(products.status, "active"),
+          eq(products.stockKind, "returnable"),
           inArray(reservations.status, OCCUPYING_STATUSES),
           // Only the stays overlapping the window can contribute unit-days.
-          lte(reservations.startDate, end),
+          lt(reservations.startDate, end),
           gte(reservations.endDate, start),
         ),
       ),
     db
-      .select({ units: sql<string>`COALESCE(SUM(${products.quantity}), 0)` })
+      .select({ units: sql<string>`COALESCE(SUM(${effectiveProductQuantitySql()}), 0)` })
       .from(products)
-      .where(and(eq(products.storeId, storeId), eq(products.status, "active"))),
+      .where(
+        and(
+          eq(products.storeId, storeId),
+          eq(products.status, "active"),
+          eq(products.stockKind, "returnable"),
+        ),
+      ),
   ]);
 
   const availableUnits = Number(fleet[0]?.units || 0);
@@ -79,29 +83,62 @@ export interface UpcomingRevenueStats {
   reservationCount: number;
 }
 
-/**
- * Everything already booked ahead: confirmed reservations starting from now on,
- * with no window bound — this is the order book, not a period metric.
- */
-export async function getUpcomingRevenue(storeId: string): Promise<UpcomingRevenueStats> {
-  const rows = await db
+/** Outstanding rental balances of confirmed future reservations, after rental refunds. */
+export async function getUpcomingRevenue(
+  storeId: string,
+  now: Date,
+): Promise<UpcomingRevenueStats> {
+  const original = alias(payments, "original_payment");
+  const paid = db
     .select({
-      total: sql<string>`COALESCE(SUM(${reservations.totalAmount}), 0)`,
+      reservationId: payments.reservationId,
+      amount: sql<string>`SUM(CASE
+      WHEN ${payments.refundOfPaymentId} IS NULL AND ${payments.type} = 'rental' THEN ${payments.amount}
+      WHEN ${original.type} = 'rental' AND ${original.status} = 'completed' THEN -${payments.amount}
+      ELSE 0 END)`.as("net_paid"),
+    })
+    .from(payments)
+    .innerJoin(reservations, eq(payments.reservationId, reservations.id))
+    .leftJoin(
+      original,
+      and(
+        eq(payments.refundOfPaymentId, original.id),
+        eq(payments.reservationId, original.reservationId),
+      ),
+    )
+    .where(
+      and(
+        eq(reservations.storeId, storeId),
+        eq(payments.status, "completed"),
+        sql`COALESCE(${payments.paidAt}, ${payments.createdAt}) < ${now}`,
+      ),
+    )
+    .groupBy(payments.reservationId)
+    .as("rental_paid");
+
+  // Match the reservation payment form's handling of older totals that include a deposit.
+  const rentalAmount = sql`CASE
+    WHEN ${reservations.totalAmount} <= 0 THEN ${reservations.subtotalAmount}
+    WHEN ${reservations.depositAmount} > 0 AND ${reservations.totalAmount} - ${reservations.subtotalAmount} >= ${reservations.depositAmount} - 0.01
+      THEN GREATEST(0, ${reservations.totalAmount} - ${reservations.depositAmount})
+    ELSE ${reservations.totalAmount} END`;
+  const remaining = sql`GREATEST(0, ${rentalAmount} - GREATEST(0, COALESCE(${paid.amount}, 0)))`;
+  const [row] = await db
+    .select({
+      total: sql<string>`COALESCE(SUM(${remaining}), 0)`,
       reservationCount: count(),
     })
     .from(reservations)
+    .leftJoin(paid, eq(paid.reservationId, reservations.id))
     .where(
       and(
         eq(reservations.storeId, storeId),
         eq(reservations.status, "confirmed"),
-        gte(reservations.startDate, new Date()),
+        gte(reservations.startDate, now),
+        sql`${remaining} > 0`,
       ),
     );
-
-  return {
-    revenue: parseFloat(rows[0]?.total || "0"),
-    reservationCount: rows[0]?.reservationCount || 0,
-  };
+  return { revenue: Number(row?.total ?? 0), reservationCount: Number(row?.reservationCount ?? 0) };
 }
 
 export interface AverageRentalDurationStats {
@@ -113,9 +150,9 @@ export interface AverageRentalDurationStats {
 /** Average stay length of the reservations that started over the window. */
 export async function getAverageRentalDuration(
   storeId: string,
-  period: Period,
+  window: SalesWindow,
 ): Promise<AverageRentalDurationStats> {
-  const { start, end } = getWindow(period);
+  const { start, end } = window;
 
   const rows = await db
     .select({
@@ -130,7 +167,7 @@ export async function getAverageRentalDuration(
         eq(reservations.storeId, storeId),
         inArray(reservations.status, OCCUPYING_STATUSES),
         gte(reservations.startDate, start),
-        lte(reservations.startDate, end),
+        lt(reservations.startDate, end),
       ),
     );
 
@@ -144,7 +181,7 @@ export async function getAverageRentalDuration(
 
 export interface PeriodReservationStats {
   reservationCount: number;
-  growth: number;
+  growth: number | null;
 }
 
 /**
@@ -153,13 +190,9 @@ export interface PeriodReservationStats {
  */
 export async function getPeriodReservationStats(
   storeId: string,
-  period: Period,
+  window: SalesWindow,
 ): Promise<PeriodReservationStats> {
-  const { start, end } = getWindow(period);
-  // The previous window stops just short of the current one, whose bounds are inclusive.
-  const previousEnd = new Date(start.getTime() - 1);
-  const previousStart = new Date(start.getTime() - (end.getTime() - start.getTime()));
-
+  const { start, end } = window;
   const countStartingBetween = (from: Date, to: Date) =>
     db
       .select({ reservationCount: count() })
@@ -169,13 +202,13 @@ export async function getPeriodReservationStats(
           eq(reservations.storeId, storeId),
           inArray(reservations.status, BOOKED_STATUSES),
           gte(reservations.startDate, from),
-          lte(reservations.startDate, to),
+          lt(reservations.startDate, to),
         ),
       );
 
   const [current, previous] = await Promise.all([
     countStartingBetween(start, end),
-    countStartingBetween(previousStart, previousEnd),
+    countStartingBetween(window.previousStart, window.previousEnd),
   ]);
 
   const reservationCount = current[0]?.reservationCount || 0;
@@ -183,6 +216,6 @@ export async function getPeriodReservationStats(
 
   return {
     reservationCount,
-    growth: previousCount > 0 ? ((reservationCount - previousCount) / previousCount) * 100 : 0,
+    growth: getSalesGrowth(reservationCount, previousCount),
   };
 }

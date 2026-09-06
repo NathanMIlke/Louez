@@ -3,15 +3,9 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 
 import { db, users } from "@louez/db";
-import {
-  BUSINESS_TYPES,
-  type BusinessType,
-  FLEET_SIZES,
-  type FleetSize,
-  PRODUCT_CATEGORIES,
-  type ProductCategory,
-} from "@louez/validations";
+import { profileSchema } from "@louez/validations";
 
+import { isReeentSignupOrigin } from "@/lib/acquisition/signup-origin";
 import { auth } from "@/lib/auth";
 
 import { ProfileClientPage } from "./profile-client-page";
@@ -26,25 +20,40 @@ export default async function OnboardingProfilePage() {
     redirect("/login");
   }
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, session.user.id),
-  });
+  const [user, fromReeent] = await Promise.all([
+    db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      columns: {
+        name: true,
+        image: true,
+        businessType: true,
+        productCategory: true,
+        fleetSize: true,
+        profileCompletedAt: true,
+        reeentIntroAcknowledgedAt: true,
+      },
+    }),
+    isReeentSignupOrigin(),
+  ]);
 
-  const businessType =
-    user?.businessType && (BUSINESS_TYPES as readonly string[]).includes(user.businessType)
-      ? (user.businessType as BusinessType)
-      : null;
+  // Loueurs referred by reeent get the education step before the first question.
+  // The database timestamp makes this a durable one-way gate across browsers.
+  if (fromReeent && !user?.reeentIntroAcknowledgedAt && !user?.profileCompletedAt) {
+    redirect("/onboarding/reeent");
+  }
 
-  const productCategory =
-    user?.productCategory &&
-    (PRODUCT_CATEGORIES as readonly string[]).includes(user.productCategory)
-      ? (user.productCategory as ProductCategory)
-      : null;
-
-  const fleetSize =
-    user?.fleetSize && (FLEET_SIZES as readonly string[]).includes(user.fleetSize)
-      ? (user.fleetSize as FleetSize)
-      : null;
+  // businessType is required on submit but may not be answered yet, so the
+  // stored value is parsed as nullable to prefill the select without erroring.
+  const businessTypeResult = profileSchema.shape.businessType
+    .nullable()
+    .safeParse(user?.businessType ?? null);
+  const productCategoryResult = profileSchema.shape.productCategory.safeParse(
+    user?.productCategory ?? null,
+  );
+  const fleetSizeResult = profileSchema.shape.fleetSize.safeParse(user?.fleetSize ?? null);
+  const businessType = businessTypeResult.success ? businessTypeResult.data : null;
+  const productCategory = productCategoryResult.success ? productCategoryResult.data : null;
+  const fleetSize = fleetSizeResult.success ? fleetSizeResult.data : null;
 
   return (
     <ProfileClientPage
@@ -54,6 +63,7 @@ export default async function OnboardingProfilePage() {
       initialProductCategory={productCategory}
       initialFleetSize={fleetSize}
       avatarSeed={session.user.id}
+      fromReeent={fromReeent}
     />
   );
 }

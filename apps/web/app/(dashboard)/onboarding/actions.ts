@@ -3,15 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { db } from "@louez/db";
-import { storeMembers, stores, subscriptions } from "@louez/db";
+import { db, storeMembers, stores, subscriptions, users } from "@louez/db";
 import { type StoreInfoInput, storeInfoSchema } from "@louez/validations";
 import { defaultBusinessHours } from "@louez/validations";
 
 import { auth } from "@/lib/auth";
+import { getSignupOrigin } from "@/lib/acquisition/signup-origin";
 import { creditAiCredits, getDefaultAiCredits } from "@/lib/ai/advisor/credits";
 import { isStandaloneMode } from "@/lib/deployment";
 import {
@@ -19,6 +19,7 @@ import {
   getDefaultPayAsYouGoConfigSnapshot,
 } from "@/lib/pay-as-you-go/defaults";
 import { areAiCreditsEnabled } from "@/lib/plans";
+import { isPlatformAdmin } from "@/lib/platform-admin";
 import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import { captureReferralServerEvent } from "@/lib/referral/analytics";
@@ -26,7 +27,7 @@ import { referralAnalyticsEvents } from "@/lib/referral/analytics-events";
 import { type ReferralAttribution, resolveReferralAttribution } from "@/lib/referral/attribution";
 import { getReferralProgramConfig } from "@/lib/referral/defaults";
 import { referralCookieDomain, referralCookieSecure } from "@/lib/referral/link";
-import { getActiveStoreId, setActiveStoreId } from "@/lib/store-context";
+import { getActiveStoreId, setActiveStoreId, verifyStoreAccess } from "@/lib/store-context";
 import { getTimezoneForCountry } from "@/lib/utils/countries";
 import { generateReferralCode, isValidReferralCode } from "@/lib/utils/referral";
 
@@ -227,7 +228,7 @@ async function trackReferredRewardGranted({
 export async function createStore(data: StoreInfoInput, editingStoreId: string | null = null) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: "errors.unauthorized" };
+    return { error: "errors.unauthenticated" };
   }
 
   const validated = storeInfoSchema.safeParse(data);
@@ -248,16 +249,9 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
   let analyticsReferralOutcome: ReferralAttributionOutcome | null = null;
 
   if (validatedEditingStoreId.data) {
-    const membership = await db.query.storeMembers.findFirst({
-      where: and(
-        eq(storeMembers.storeId, validatedEditingStoreId.data),
-        eq(storeMembers.userId, session.user.id),
-        eq(storeMembers.role, "owner"),
-      ),
-      columns: { id: true },
-    });
+    const role = await verifyStoreAccess(validatedEditingStoreId.data);
 
-    if (!membership) {
+    if (!role || (role !== "owner" && !isPlatformAdmin(session.user.email))) {
       return { error: "errors.unauthorized" };
     }
 
@@ -428,6 +422,7 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
     });
     const referredByUserId = pendingReferral.attribution?.referredByUserId ?? null;
     const referredByStoreId = pendingReferral.attribution?.referredByStoreId ?? null;
+    const signupOriginCookie = await getSignupOrigin();
 
     // Consume the referral cookie exactly once, clearing it with the SAME domain it was set
     // with — a bare delete() emits a host-only expiry that does not match the .louez.io
@@ -444,57 +439,78 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
       newReferralCode = generateReferralCode();
     }
 
-    // Create new store
-    const [newStore] = await db
-      .insert(stores)
-      .values({
+    const newStore = await db.transaction(async (tx) => {
+      const [user] = await tx
+        .select({ signupOrigin: users.signupOrigin })
+        .from(users)
+        .where(eq(users.id, session.user.id))
+        .for("update");
+      if (!user) return null;
+
+      const signupOrigin = user.signupOrigin ?? signupOriginCookie;
+      if (user.signupOrigin === null && signupOriginCookie !== null) {
+        await tx
+          .update(users)
+          .set({ signupOrigin: signupOriginCookie, updatedAt: new Date() })
+          .where(and(eq(users.id, session.user.id), isNull(users.signupOrigin)));
+      }
+
+      const [createdStore] = await tx
+        .insert(stores)
+        .values({
+          userId: session.user.id,
+          name: validated.data.name,
+          slug: validated.data.slug,
+          address: validated.data.address || null,
+          latitude: validated.data.latitude?.toString() || null,
+          longitude: validated.data.longitude?.toString() || null,
+          email: validated.data.email || null,
+          phone: validated.data.phone || null,
+          referralCode: newReferralCode,
+          referredByUserId,
+          referredByStoreId,
+          signupOrigin,
+          settings: {
+            reservationMode: "payment",
+            minRentalMinutes: 60,
+            maxRentalMinutes: null,
+            advanceNoticeMinutes: 1440,
+            turnoverBufferMinutes: 0,
+            businessHours: defaultBusinessHours,
+            country: validated.data.country,
+            timezone: getTimezoneForCountry(validated.data.country),
+            currency: validated.data.currency,
+          },
+        })
+        .$returningId();
+
+      await tx.insert(storeMembers).values({
+        storeId: createdStore.id,
         userId: session.user.id,
-        name: validated.data.name,
-        slug: validated.data.slug,
-        address: validated.data.address || null,
-        latitude: validated.data.latitude?.toString() || null,
-        longitude: validated.data.longitude?.toString() || null,
-        email: validated.data.email || null,
-        phone: validated.data.phone || null,
-        referralCode: newReferralCode,
-        referredByUserId,
-        referredByStoreId,
-        settings: {
-          reservationMode: "payment",
-          minRentalMinutes: 60,
-          maxRentalMinutes: null,
-          advanceNoticeMinutes: 1440,
-          turnoverBufferMinutes: 0,
-          businessHours: defaultBusinessHours,
-          country: validated.data.country,
-          timezone: getTimezoneForCountry(validated.data.country),
-          currency: validated.data.currency,
-        },
-      })
-      .$returningId();
+        role: "owner",
+      });
 
-    // Create owner membership
-    await db.insert(storeMembers).values({
-      storeId: newStore.id,
-      userId: session.user.id,
-      role: "owner",
-    });
+      // New stores default to pay-as-you-go billing (the owner can switch to a
+      // subscription plan at any time from the subscription page). Snapshot the current
+      // default pricing offer (PAYG_DEFAULT_PRICING env, or the platform default ladder)
+      // so the store keeps these tariffs for life even if the offer later changes.
+      await tx.insert(subscriptions).values({
+        storeId: createdStore.id,
+        planSlug: "pay_as_you_go",
+        billingMode: "pay_as_you_go",
+        payAsYouGoConfig: getDefaultPayAsYouGoConfigSnapshot(validated.data.currency),
+        // Welcome gift: free reservations (commission waived) for the new store. A store
+        // that signed up through a referral gets the larger Referred Reward instead.
+        freeReservationsGranted: referredByStoreId
+          ? getReferralProgramConfig().referredRewardFreeReservations
+          : getDefaultFreeReservations(),
+      });
 
-    // New stores default to pay-as-you-go billing (the owner can switch to a
-    // subscription plan at any time from the subscription page). Snapshot the current
-    // default pricing offer (PAYG_DEFAULT_PRICING env, or the platform default ladder)
-    // so the store keeps these tariffs for life even if the offer later changes.
-    await db.insert(subscriptions).values({
-      storeId: newStore.id,
-      planSlug: "pay_as_you_go",
-      billingMode: "pay_as_you_go",
-      payAsYouGoConfig: getDefaultPayAsYouGoConfigSnapshot(validated.data.currency),
-      // Welcome gift: free reservations (commission waived) for the new store. A store
-      // that signed up through a referral gets the larger Referred Reward instead.
-      freeReservationsGranted: referredByStoreId
-        ? getReferralProgramConfig().referredRewardFreeReservations
-        : getDefaultFreeReservations(),
+      return createdStore;
     });
+    if (!newStore) {
+      return { error: "errors.unauthorized" };
+    }
 
     // Welcome AI advisor credits (cloud commercial layer). Idempotent per store
     // (dedup key) and inert unless the credit layer is enabled.

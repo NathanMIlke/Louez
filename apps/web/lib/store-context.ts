@@ -16,6 +16,7 @@ export type StoreWithRole = {
   name: string
   slug: string
   logoUrl: string | null
+  onboardingCompleted: boolean
   role: MemberRole
 }
 
@@ -50,6 +51,8 @@ export type StoreWithFullData = {
   customerNotificationSettings: CustomerNotificationSettings | null
   icsToken: string | null
   referralCode: string | null
+  /** Where the sign-up came from, e.g. the reeent marketplace (ADR 010). */
+  signupOrigin: string | null
   trialDays: number
   discountPercent: number
   discountDurationMonths: number
@@ -79,6 +82,7 @@ export async function getUserStores(): Promise<StoreWithRole[]> {
         name: stores.name,
         slug: stores.slug,
         logoUrl: stores.logoUrl,
+        onboardingCompleted: stores.onboardingCompleted,
         role: storeMembers.role,
       })
       .from(stores)
@@ -94,6 +98,7 @@ export async function getUserStores(): Promise<StoreWithRole[]> {
         name: stores.name,
         slug: stores.slug,
         logoUrl: stores.logoUrl,
+        onboardingCompleted: stores.onboardingCompleted,
       })
       .from(stores)
       .orderBy(stores.name)
@@ -104,12 +109,17 @@ export async function getUserStores(): Promise<StoreWithRole[]> {
     for (const store of allStores) {
       if (memberStoreIds.has(store.id)) {
         // User is a natural member - use their actual role
-        const memberStore = memberStores.find((s) => s.id === store.id)!
-        result.push(memberStore as StoreWithRole)
+        const memberStore = memberStores.find((candidate) => candidate.id === store.id)
+        if (!memberStore) continue
+        result.push({
+          ...memberStore,
+          onboardingCompleted: memberStore.onboardingCompleted === true,
+        } as StoreWithRole)
       } else {
         // Admin access only - mark with platform_admin role
         result.push({
           ...store,
+          onboardingCompleted: store.onboardingCompleted === true,
           role: 'platform_admin' as const,
         })
       }
@@ -125,6 +135,7 @@ export async function getUserStores(): Promise<StoreWithRole[]> {
       name: stores.name,
       slug: stores.slug,
       logoUrl: stores.logoUrl,
+      onboardingCompleted: stores.onboardingCompleted,
       role: storeMembers.role,
     })
     .from(stores)
@@ -132,7 +143,10 @@ export async function getUserStores(): Promise<StoreWithRole[]> {
     .where(eq(storeMembers.userId, session.user.id))
     .orderBy(stores.name)
 
-  return results as StoreWithRole[]
+  return results.map((store) => ({
+    ...store,
+    onboardingCompleted: store.onboardingCompleted === true,
+  })) as StoreWithRole[]
 }
 
 /**

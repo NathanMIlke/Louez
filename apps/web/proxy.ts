@@ -4,6 +4,11 @@ import type { NextRequest } from "next/server";
 import { isStandaloneMode } from "@/lib/deployment";
 import { buildEmbedSecurityHeaders, buildSecurityHeaders } from "@/lib/util.security-headers";
 import { isValidReferralCode } from "@/lib/utils/referral";
+import {
+  isKnownSignupOrigin,
+  SIGNUP_ORIGIN_COOKIE,
+  SIGNUP_ORIGIN_COOKIE_MAX_AGE,
+} from "@/lib/utils/signup-origin";
 import { LOGIN_CALLBACK_PATH_HEADER } from "@/lib/utils/util.url";
 import { readPublicEnvRuntime, type PublicEnv } from "@/lib/validators/validator.public-env";
 
@@ -62,6 +67,9 @@ function withRuntimeSecurityHeaders(
 
   return response;
 }
+
+const SALES_CHANNEL_COOKIE = "louez_channel";
+const MARKETPLACE_CHANNEL = "marketplace";
 
 // Routes that should never be rewritten to storefront (dashboard/auth routes)
 const DASHBOARD_ROUTES = [
@@ -147,11 +155,43 @@ function createDashboardResponse(request: NextRequest) {
 function createStorefrontRewrite(request: NextRequest, slug: string) {
   const { pathname } = request.nextUrl;
   const url = createInternalRewriteUrl(request, `/${slug}${pathname}`);
-  const response = NextResponse.rewrite(url);
+  const requestedChannel = request.nextUrl.searchParams.get("channel");
+  const hasMarketplaceCookie =
+    request.cookies.get(SALES_CHANNEL_COOKIE)?.value === MARKETPLACE_CHANNEL;
+  const isMarketplaceChannel =
+    requestedChannel === MARKETPLACE_CHANNEL ||
+    (requestedChannel !== "direct" && hasMarketplaceCookie);
+  const requestHeaders = new Headers(request.headers);
+
+  // Never trust caller-provided mode headers. The proxy derives them from the
+  // route, query, and cookie before forwarding the rewritten request upstream.
+  requestHeaders.delete("x-embed-mode");
+  requestHeaders.delete("x-sales-channel");
+
+  if (isMarketplaceChannel) {
+    requestHeaders.set("x-sales-channel", MARKETPLACE_CHANNEL);
+  }
 
   // Embed routes drop the app chrome (used by the layout).
   if (pathname === "/embed" || pathname.startsWith("/embed/")) {
-    response.headers.set("x-embed-mode", "1");
+    requestHeaders.set("x-embed-mode", "1");
+  }
+
+  const response = NextResponse.rewrite(url, {
+    request: {
+      headers: requestHeaders,
+    },
+  });
+
+  if (requestedChannel === MARKETPLACE_CHANNEL) {
+    response.cookies.set(SALES_CHANNEL_COOKIE, MARKETPLACE_CHANNEL, {
+      path: "/",
+      sameSite: "lax",
+      httpOnly: true,
+      secure: !isLoopbackHost(request.nextUrl.hostname),
+    });
+  } else if (requestedChannel === "direct" && hasMarketplaceCookie) {
+    response.cookies.delete(SALES_CHANNEL_COOKIE);
   }
 
   return response;
@@ -226,7 +266,7 @@ async function getStandaloneStoreSlug(): Promise<string | null> {
 }
 
 // =============================================================================
-// REFERRAL ATTRIBUTION
+// ACQUISITION ATTRIBUTION
 // =============================================================================
 
 const REFERRAL_COOKIE = "louez_referral";
@@ -271,6 +311,47 @@ function captureReferral(
     });
   }
   return response;
+}
+
+/**
+ * Capture a `?from=` sign-up origin (e.g. `?from=reeent`) the same way `?ref=` is captured:
+ * last-click, cross-subdomain, so it survives the entry URL and the OAuth round-trip and can
+ * still be read once the user lands in onboarding. Only allow-listed values are stored — the
+ * cookie decides which education step and which offer copy a new loueur is shown.
+ */
+function captureSignupOrigin(
+  request: NextRequest,
+  response: NextResponse,
+  host: string,
+  appDomain: string,
+): NextResponse {
+  const from = request.nextUrl.searchParams.get("from");
+  if (isKnownSignupOrigin(from)) {
+    response.cookies.set(SIGNUP_ORIGIN_COOKIE, from, {
+      maxAge: SIGNUP_ORIGIN_COOKIE_MAX_AGE,
+      path: "/",
+      sameSite: "lax",
+      httpOnly: true,
+      secure: !isLoopbackHost(host.split(":")[0]),
+      domain: referralCookieDomain(host, appDomain),
+    });
+  }
+  return response;
+}
+
+/** Both last-click acquisition captures, applied to the same outgoing response. */
+function captureAcquisition(
+  request: NextRequest,
+  response: NextResponse,
+  host: string,
+  appDomain: string,
+): NextResponse {
+  return captureSignupOrigin(
+    request,
+    captureReferral(request, response, host, appDomain),
+    host,
+    appDomain,
+  );
 }
 
 export async function proxy(request: NextRequest) {
@@ -323,7 +404,12 @@ export async function proxy(request: NextRequest) {
 
   if (isLocalhost && !subdomain && previewStoreSlug && !isDashboardRoute(pathname)) {
     return withRuntimeSecurityHeaders(
-      captureReferral(request, createStorefrontRewrite(request, previewStoreSlug), host, appDomain),
+      captureAcquisition(
+        request,
+        createStorefrontRewrite(request, previewStoreSlug),
+        host,
+        appDomain,
+      ),
       pathname,
       publicEnv,
     );
@@ -337,7 +423,7 @@ export async function proxy(request: NextRequest) {
   //   - localhost (when PREVIEW_STORE_SLUG is not set)
   if (subdomain === dashboardSubdomain || (isLocalhost && !subdomain)) {
     return withRuntimeSecurityHeaders(
-      captureReferral(request, createDashboardResponse(request), host, appDomain),
+      captureAcquisition(request, createDashboardResponse(request), host, appDomain),
       pathname,
       publicEnv,
     );
@@ -350,7 +436,7 @@ export async function proxy(request: NextRequest) {
   // Excludes "www" which should show the landing page
   if (subdomain && subdomain !== "www") {
     return withRuntimeSecurityHeaders(
-      captureReferral(request, createStorefrontRewrite(request, subdomain), host, appDomain),
+      captureAcquisition(request, createStorefrontRewrite(request, subdomain), host, appDomain),
       pathname,
       publicEnv,
     );
@@ -360,7 +446,7 @@ export async function proxy(request: NextRequest) {
   // 6. DEFAULT: Pass through (landing page, www, etc.)
   // -----------------------------------------------------------------------------
   return withRuntimeSecurityHeaders(
-    captureReferral(request, NextResponse.next(), host, appDomain),
+    captureAcquisition(request, NextResponse.next(), host, appDomain),
     pathname,
     publicEnv,
   );

@@ -160,6 +160,8 @@
     "or": "of",
     "loginTitle": "Welkom bij louez",
     "loginDescription": "Voer uw e-mail in om door te gaan. Als u geen account heeft, wordt er automatisch een aangemaakt.",
+    "reeentLoginTitle": "Welkom bij louez × <reeent>reeent</reeent>",
+    "reeentLoginDescription": "reeent is de etalage, louez is uw tool: reserveringen, betalingen en agenda beheert u hier. Als u geen account heeft, wordt er automatisch een aangemaakt.",
     "linkWillBeSent": "Een beveiligde link wordt naar uw e-mail gestuurd. Geen wachtwoord te onthouden.",
     "checkEmail": "Controleer uw e-mail",
     "emailSentTo": "Een inloglink is verzonden naar",
@@ -416,6 +418,9 @@
       "manage": "Beheren",
       "dashboard": "Dashboard",
       "viewStore": "Winkel bekijken",
+      "viewOnReeent": "Mijn reeent-pagina bekijken",
+      "openStorefront": "Mijn site",
+      "openReeentListing": "Mijn reeent-pagina",
       "newReservation": "Nieuwe reservering",
       "reservationLimitReached": "Limiet bereikt",
       "help": "Hulp",
@@ -723,6 +728,13 @@
         "description": "Uw klanten wachten op uw reactie",
         "action": "Afhandelen"
       },
+      "reeentStripe": {
+        "title": "Je winkel is nog niet zichtbaar op <reeent>reeent</reeent>",
+        "description": "Zolang online betalingen niet actief zijn, publiceert reeent je winkel niet. De lanceeraanbieding (0 € reeent-commissie voor het leven) geldt vanaf de publicatie, zolang er plaatsen zijn.",
+        "continueSetup": "Stripe-configuratie voortzetten",
+        "activate": "Online betalingen activeren",
+        "paymentSettings": "Betalingsinstellingen"
+      },
       "setup": {
         "title": "Aan de slag",
         "description": "Enkele stappen om te beginnen",
@@ -738,6 +750,7 @@
         "descriptions": {
           "addFirstProduct": "Voeg je eerste product toe zodat klanten kunnen boeken.",
           "connectStripe": "Koppel Stripe om kaartbetalingen bij het boeken te accepteren.",
+          "connectStripeReeent": "Zolang Stripe niet actief is, is je winkel niet zichtbaar op reeent. Koppel Stripe om gepubliceerd te worden en kaartbetalingen te accepteren.",
           "firstReservation": "Deel je winkel met klanten of maak handmatig een reservering aan.",
           "firstCompleted": "Zodra de verhuur is teruggebracht, markeer je de reservering als voltooid."
         },
@@ -1826,6 +1839,7 @@
       "source": "Bron",
       "sourceOnline": "Online",
       "sourceManual": "Handmatig",
+      "sourceMarketplace": "Marktplaats",
       "internalNotes": "Interne notities",
       "internalNotesPlaceholder": "Voeg notities toe over deze reservering...",
       "internalNotesHelp": "Deze notities zijn niet zichtbaar voor de klant",
@@ -5352,6 +5366,128 @@
           "communication": "Communicatie",
           "accountData": "Account en gegevens"
         }
+      },
+      "salesChannels": {
+        "title": "Verkoopkanalen",
+        "description": "Kies waar je producten te huur worden aangeboden.",
+        "channels": {
+          "heading": "Waar wil je reserveringen ontvangen?",
+          "subheading": "Zet zoveel kanalen aan als je wilt: ze delen dezelfde catalogus, dezelfde voorraad en dezelfde reserveringsmotor.",
+          "marketplace": {
+            "name": "Louez Marketplace",
+            "description": "Je producten verschijnen in de openbare zoekfunctie van de marketplace, met directe reservering.",
+            "recommended": "Aanbevolen",
+            "enableLabel": "Marketplace-kanaal inschakelen",
+            "benefits": {
+              "visibility": "Nieuwe klanten via het zoeken op de marketplace.",
+              "seo": "Een eigen pagina voor je bedrijf, geïndexeerd door zoekmachines.",
+              "free": "Gratis bij de lancering, zonder commissie op je reserveringen."
+            }
+          },
+          "storefront": {
+            "name": "Mijn webshop",
+            "description": "Je reserveringssite, beschikbaar zodra je winkel gepubliceerd kan worden.",
+            "alwaysOn": "Altijd actief",
+            "note": "Dit kanaal kun je niet uitschakelen: het verwerkt alle reserveringen, ook die via de marketplace.",
+            "viewAction": "Mijn winkel bekijken",
+            "customizeAction": "Uiterlijk aanpassen"
+          }
+        },
+        "status": {
+          "label": "Status",
+          "values": {
+            "setup_required": "Instellen vereist",
+            "pending": "Wacht op publicatie",
+            "published": "Gepubliceerd",
+            "paused": "Gepauzeerd",
+            "disabled": "Uitgeschakeld"
+          },
+          "publishedAt": "Gepubliceerd op {date}",
+          "reason": {
+            "disabledByOwner": "Je hebt dit kanaal uitgeschakeld.",
+            "missing": "Er staan nog punten van de checklist open."
+          }
+        },
+        "checklist": {
+          "title": "Publicatiechecklist",
+          "description": "Je winkel gaat live op de marketplace zodra al deze punten in orde zijn.",
+          "progress": "{done} van {total} voltooid",
+          "completeDescription": "Alles staat klaar: je winkel gaat mee met de volgende synchronisatie.",
+          "fixAction": "Afronden",
+          "doneLabel": "In orde",
+          "items": {
+            "addressAndGeolocation": {
+              "label": "Adres en geolocatie",
+              "description": "Een volledig adres met coördinaten zet je op de kaart."
+            },
+            "activeProductWithImageAndPrice": {
+              "label": "Minstens één actief product",
+              "description": "Een actief product met ten minste één foto en een prijs."
+            },
+            "stripeChargesEnabled": {
+              "label": "Stripe-betalingen werken",
+              "description": "Je Stripe-account accepteert online betalingen."
+            },
+            "cgvPresent": {
+              "label": "Huurvoorwaarden",
+              "description": "Je algemene huurvoorwaarden zijn ingevuld."
+            },
+            "marketplaceTermsAccepted": {
+              "label": "Marketplace-voorwaarden geaccepteerd",
+              "description": "De marketplace is gratis bij de lancering. De voorwaarden behouden het recht voor om later een commissie in te voeren op reserveringen die van de marketplace komen.",
+              "acceptedAt": "Geaccepteerd op {date}"
+            }
+          }
+        },
+        "claim": {
+          "title": "Je bedrijf staat mogelijk al op de marketplace",
+          "description": "Bevestig alleen een vermelding die je als jouw bedrijf herkent. Vermeldingen worden nooit automatisch gekoppeld.",
+          "confirmAction": "Dit is mijn bedrijf",
+          "noneAction": "Geen van deze bedrijven",
+          "linkedTitle": "Bedrijfsvermelding gekoppeld",
+          "linkedDescription": "De marketplace behoudt bij publicatie de bestaande vermelding en URL.",
+          "linkedFallback": "Gekoppeld bedrijf",
+          "mergeHint": "Deze vermelding wordt bij publicatie samengevoegd met je winkel.",
+          "unlinkAction": "Koppeling verwijderen",
+          "distanceMeters": "{distance} m",
+          "distanceKilometers": "{distance} km",
+          "confirmedToast": "Bedrijf aan je winkel gekoppeld.",
+          "dismissedToast": "Geen bedrijfsvermelding geselecteerd.",
+          "unlinkedToast": "Koppeling met het bedrijf verwijderd."
+        },
+        "mapping": {
+          "title": "Categoriekoppeling",
+          "description": "Koppel elk van je categorieën aan een marketplace-categorie zodat je producten in de juiste zoekopdrachten verschijnen.",
+          "none": "Geen koppeling",
+          "fallbackHint": "De catalogus van de marketplace is niet beschikbaar. Voer de categorie-id rechtstreeks in, in kleine letters met streepjes.",
+          "fallbackPlaceholder": "velo-vtt-electrique",
+          "invalidSlug": "Ongeldige id: alleen kleine letters, cijfers en streepjes.",
+          "empty": "Je hebt nog geen categorie aangemaakt.",
+          "emptyAction": "Categorie aanmaken",
+          "saved": "Koppelingen opgeslagen."
+        },
+        "disable": {
+          "title": "Marketplace uitschakelen?",
+          "description": "Je producten worden niet meer op de marketplace aangeboden. Je kunt het kanaal op elk moment weer inschakelen.",
+          "consequences": {
+            "search": "Je producten verdwijnen snel uit het zoeken op de marketplace.",
+            "redirect": "Al geïndexeerde productpagina's verwijzen door naar je bedrijfsvermelding.",
+            "links": "Je vermelding blijft online in de gids en je bestaande links blijven werken."
+          },
+          "confirm": "Uitschakelen",
+          "cancel": "Annuleren"
+        },
+        "toasts": {
+          "enabled": "Marketplace-kanaal ingeschakeld.",
+          "disabled": "Marketplace-kanaal uitgeschakeld.",
+          "termsAccepted": "Marketplace-voorwaarden geaccepteerd."
+        },
+        "cohort": {
+          "memberTitle": "reeent-aanbieding voor het leven — 0 € reeent-commissie",
+          "memberRank": "Lid nr. {rank} van de lanceercohort",
+          "incentiveBadge": "Lanceeraanbieding",
+          "incentiveLine": "nog {remaining} plaatsen met 0 € reeent-commissie voor het leven"
+        }
       }
     },
     "commandPalette": {
@@ -6490,6 +6626,9 @@
         "depositDescription": "Het bedrag is tijdelijk geblokkeerd op uw kaart."
       }
     },
+    "marketplaceShell": {
+      "marketplaceName": "Louez Marketplace"
+    },
     "footer": {
       "description": "Eenvoudige en efficiënte materiaalverhuur.",
       "contact": "Contact",
@@ -6612,7 +6751,8 @@
         "upTo20": "6 tot 20",
         "upTo50": "21 tot 50",
         "moreThan50": "Meer dan 50"
-      }
+      },
+      "individualNote": "Je hebt geen bedrijf nodig om te beginnen: maak je pagina, publiceer je spullen en ontvang online betalingen. Verhuurinkomsten moet je aangeven volgens je eigen situatie."
     },
     "store": {
       "title": "Uw winkelinformatie",
@@ -6688,6 +6828,17 @@
       "requestModeDescription": "Klanten sturen een aanvraag. Jij keurt goed en int zelf de betaling (contant, overschrijving, kaart ter plaatse).",
       "requestModeNote": "Je keurt elke reservering goed en int zelf de betaling. Je kunt via de instellingen altijd overstappen op online betaling.",
       "configComplete": "Configuratie voltooid!",
+      "reeent": {
+        "title": "Zet online betalen aan",
+        "description": "Op reeent reserveren en betalen je klanten online. Dat maakt je shop “Réservable en ligne” en zet hem hoger in de resultaten.",
+        "whyTitle": "Waarom dit nodig is",
+        "panelWhyTitle": "Waarom Stripe op reeent?",
+        "why1": "De betaling gaat via Stripe rechtstreeks van de klant naar je bankrekening. reeent noch Louez raakt het geld aan.",
+        "why2": "Daardoor is direct reserveren mogelijk — niets achteraf innen, niets onbetaald aan jouw kant.",
+        "withoutStripe": "Zonder actief Stripe-account blijft je Louez-shop werken (reserveringen vallen terug op handmatige goedkeuring), maar hij verschijnt pas op reeent zodra Stripe actief is.",
+        "later": "Later",
+        "laterNote": "Je kunt het altijd via je dashboard aanzetten. Je shop wordt automatisch op reeent gepubliceerd zodra Stripe actief is; tot die tijd gaan je Louez-reserveringen via handmatige goedkeuring."
+      },
       "panel": {
         "payment": {
           "benefitsTitle": "Waarom online betaling?",
@@ -6759,7 +6910,45 @@
       "product": "Eerste product",
       "payment": "Betalingen",
       "profile": "Profiel",
-      "source": "Bron"
+      "source": "Bron",
+      "reeent": "reeent"
+    },
+    "reeent": {
+      "title": "Je komt van <reeent>reeent</reeent>",
+      "description": "Eén vraag voordat je je shop aanmaakt.",
+      "introDescription": "Drie punten, dan één vraag.",
+      "status": {
+        "label": "Je verhuurt",
+        "professional": "Als bedrijf",
+        "professionalHint": "Je hebt een bedrijf, een vereniging of een ingeschreven activiteit.",
+        "individual": "Als particulier",
+        "individualHint": "Je verhuurt je eigen spullen, zonder bedrijf.",
+        "hint": "Je status wordt op reeent getoond en past het vervolg aan."
+      },
+      "panel": {
+        "title": "Goed om te weten",
+        "products": {
+          "title": "Twee producten, één account",
+          "body": "reeent is de etalage: daar vinden klanten je materiaal. Louez is jouw gereedschap: reserveringen, betalingen en agenda beheer je hier.",
+          "individualBody": "Je hebt geen bedrijf nodig. reeent is de etalage, Louez is jouw gereedschap: plaats je spullen, beheer je reserveringen en word online betaald."
+        },
+        "offer": {
+          "title": "Lanceeraanbod",
+          "body": "De eerste {total} verhuurders die op reeent publiceren, houden 0 € reeent-commissie, voor altijd.",
+          "remaining": "Nog {remaining} van {total} plaatsen vrij.",
+          "closedBody": "Het lanceeraanbod is vol. Publiceren op reeent blijft de eenvoudigste manier om zichtbaar te worden."
+        },
+        "pricing": {
+          "title": "Wat Louez kost",
+          "amount": "1 €",
+          "amountUnit": "per reservering",
+          "amountDetail": "Lager bij meer volume.",
+          "quietMonth": "Een maand zonder verhuur: niets te betalen.",
+          "subscription": "Een maandabonnement als je veel verhuurt.",
+          "switch": "Je wisselt wanneer je wilt.",
+          "individualNote": "Huurinkomsten geef je zelf op volgens je situatie; wordt het een beroepsactiviteit, dan vragen we je van status te wisselen."
+        }
+      }
     }
   },
   "categories": {
@@ -7159,7 +7348,8 @@
     "standaloneSingleStore": "Deze instantie host één winkel",
     "emailLoginUnavailable": "Inloggen via e-mail is momenteel niet beschikbaar",
     "stripeNotConfigured": "Online betalingen zijn niet beschikbaar: deze instantie heeft geen Stripe-sleutels geconfigureerd. Reserveringen verlopen in aanvraagmodus.",
-    "emailSendFailed": "Verzenden van de e-mail is mislukt."
+    "emailSendFailed": "Verzenden van de e-mail is mislukt.",
+    "marketplaceChannelNotFound": "Marketplace-kanaal niet gevonden"
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

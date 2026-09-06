@@ -160,6 +160,8 @@
     "or": "o",
     "loginTitle": "Benvenuto su louez",
     "loginDescription": "Inserisci la tua email per continuare. Se non hai un account, verrà creato automaticamente.",
+    "reeentLoginTitle": "Benvenuto su louez × <reeent>reeent</reeent>",
+    "reeentLoginDescription": "reeent è la vetrina, louez è il tuo strumento: prenotazioni, pagamenti e calendario si gestiscono qui. Se non hai un account, verrà creato automaticamente.",
     "linkWillBeSent": "Un link sicuro ti verrà inviato via email. Nessuna password da ricordare.",
     "checkEmail": "Controlla la tua email",
     "emailSentTo": "Un link di accesso e stato inviato a",
@@ -416,6 +418,9 @@
       "manage": "Gestisci",
       "dashboard": "Dashboard",
       "viewStore": "Vedi negozio",
+      "viewOnReeent": "Vedi la mia pagina reeent",
+      "openStorefront": "Il mio sito",
+      "openReeentListing": "La mia pagina reeent",
       "newReservation": "Nuova prenotazione",
       "reservationLimitReached": "Limite raggiunto",
       "help": "Aiuto",
@@ -723,6 +728,13 @@
         "description": "I tuoi clienti attendono una risposta",
         "action": "Gestisci"
       },
+      "reeentStripe": {
+        "title": "Il tuo negozio non è ancora visibile su <reeent>reeent</reeent>",
+        "description": "Finché i pagamenti online non sono attivi, reeent non pubblica il tuo negozio. L'offerta di lancio (0 € di commissione reeent a vita) vale dalla pubblicazione, finché restano posti.",
+        "continueSetup": "Continua la configurazione di Stripe",
+        "activate": "Attiva i pagamenti online",
+        "paymentSettings": "Impostazioni di pagamento"
+      },
       "setup": {
         "title": "Primi passi",
         "description": "Alcuni passaggi per iniziare",
@@ -738,6 +750,7 @@
         "descriptions": {
           "addFirstProduct": "Aggiungi il tuo primo prodotto così i clienti possono prenotare.",
           "connectStripe": "Collega Stripe per accettare pagamenti con carta al momento della prenotazione.",
+          "connectStripeReeent": "Finché Stripe non è attivo, il tuo negozio non è visibile su reeent. Collega Stripe per essere pubblicato e accettare pagamenti con carta.",
           "firstReservation": "Condividi il tuo negozio con i clienti o crea una prenotazione manualmente.",
           "firstCompleted": "Una volta restituito il noleggio, segna la prenotazione come completata."
         },
@@ -1826,6 +1839,7 @@
       "source": "Fonte",
       "sourceOnline": "Online",
       "sourceManual": "Manuale",
+      "sourceMarketplace": "Marketplace",
       "internalNotes": "Note interne",
       "internalNotesPlaceholder": "Aggiungi note su questa prenotazione...",
       "internalNotesHelp": "Queste note non sono visibili al cliente",
@@ -5352,6 +5366,128 @@
           "communication": "Comunicazione",
           "accountData": "Account e dati"
         }
+      },
+      "salesChannels": {
+        "title": "Canali di vendita",
+        "description": "Scegli dove i tuoi prodotti vengono proposti a noleggio.",
+        "channels": {
+          "heading": "Dove vuoi ricevere le prenotazioni?",
+          "subheading": "Attiva tutti i canali che vuoi: condividono lo stesso catalogo, le stesse scorte e lo stesso motore di prenotazione.",
+          "marketplace": {
+            "name": "Marketplace Louez",
+            "description": "I tuoi prodotti compaiono nella ricerca pubblica del marketplace, con prenotazione diretta.",
+            "recommended": "Consigliato",
+            "enableLabel": "Attiva il canale marketplace",
+            "benefits": {
+              "visibility": "Nuovi clienti che arrivano dalla ricerca del marketplace.",
+              "seo": "Una pagina dedicata alla tua attività, indicizzata dai motori di ricerca.",
+              "free": "Gratuito al lancio, senza commissioni sulle tue prenotazioni."
+            }
+          },
+          "storefront": {
+            "name": "Il mio negozio online",
+            "description": "Il tuo sito di prenotazione, disponibile non appena il negozio è pubblicabile.",
+            "alwaysOn": "Sempre attivo",
+            "note": "Questo canale non si disattiva: è lui a gestire le prenotazioni, comprese quelle che arrivano dal marketplace.",
+            "viewAction": "Vedi il mio negozio",
+            "customizeAction": "Personalizza l'aspetto"
+          }
+        },
+        "status": {
+          "label": "Stato",
+          "values": {
+            "setup_required": "Configurazione necessaria",
+            "pending": "In attesa di pubblicazione",
+            "published": "Pubblicato",
+            "paused": "In pausa",
+            "disabled": "Disattivato"
+          },
+          "publishedAt": "Pubblicato il {date}",
+          "reason": {
+            "disabledByOwner": "Hai disattivato questo canale.",
+            "missing": "Alcuni punti della checklist sono ancora da completare."
+          }
+        },
+        "checklist": {
+          "title": "Checklist di pubblicazione",
+          "description": "Il tuo negozio viene pubblicato sul marketplace non appena tutti questi punti sono soddisfatti.",
+          "progress": "{done} su {total} completati",
+          "completeDescription": "Tutto pronto: il tuo negozio parte alla prossima sincronizzazione.",
+          "fixAction": "Completa",
+          "doneLabel": "Completato",
+          "items": {
+            "addressAndGeolocation": {
+              "label": "Indirizzo e geolocalizzazione",
+              "description": "Un indirizzo completo con le sue coordinate ti posiziona sulla mappa."
+            },
+            "activeProductWithImageAndPrice": {
+              "label": "Almeno un prodotto attivo",
+              "description": "Un prodotto attivo con almeno una foto e un prezzo."
+            },
+            "stripeChargesEnabled": {
+              "label": "Pagamenti Stripe operativi",
+              "description": "Il tuo account Stripe accetta i pagamenti online."
+            },
+            "cgvPresent": {
+              "label": "Condizioni di noleggio",
+              "description": "Le tue condizioni generali di noleggio sono compilate."
+            },
+            "marketplaceTermsAccepted": {
+              "label": "Condizioni del marketplace accettate",
+              "description": "Il marketplace è gratuito al lancio. Le condizioni riservano la possibilità di introdurre in futuro una commissione sulle prenotazioni provenienti dal marketplace.",
+              "acceptedAt": "Accettate il {date}"
+            }
+          }
+        },
+        "claim": {
+          "title": "La tua attività potrebbe essere già presente nel marketplace",
+          "description": "Conferma solo una scheda che riconosci come la tua attività. Le schede non vengono mai collegate automaticamente.",
+          "confirmAction": "Questa è la mia attività",
+          "noneAction": "Nessuna di queste attività",
+          "linkedTitle": "Scheda dell'elenco collegata",
+          "linkedDescription": "Il marketplace manterrà la scheda esistente e il suo URL al momento della pubblicazione.",
+          "linkedFallback": "Attività collegata",
+          "mergeHint": "Questa scheda verrà unita al tuo negozio al momento della pubblicazione.",
+          "unlinkAction": "Annulla collegamento",
+          "distanceMeters": "{distance} m",
+          "distanceKilometers": "{distance} km",
+          "confirmedToast": "Attività collegata al tuo negozio.",
+          "dismissedToast": "Nessuna scheda selezionata.",
+          "unlinkedToast": "Collegamento con l'attività annullato."
+        },
+        "mapping": {
+          "title": "Corrispondenza delle categorie",
+          "description": "Associa ciascuna delle tue categorie a una categoria del marketplace, così i tuoi prodotti compaiono nelle ricerche giuste.",
+          "none": "Nessuna corrispondenza",
+          "fallbackHint": "Il catalogo del marketplace non è disponibile. Inserisci direttamente l'identificatore della categoria, in minuscolo e con trattini.",
+          "fallbackPlaceholder": "velo-vtt-electrique",
+          "invalidSlug": "Identificatore non valido: solo minuscole, cifre e trattini.",
+          "empty": "Non hai ancora creato alcuna categoria.",
+          "emptyAction": "Crea una categoria",
+          "saved": "Corrispondenze salvate."
+        },
+        "disable": {
+          "title": "Disattivare il marketplace?",
+          "description": "I tuoi prodotti non saranno più proposti sul marketplace. Puoi riattivare il canale in qualsiasi momento.",
+          "consequences": {
+            "search": "I tuoi prodotti spariscono rapidamente dalla ricerca del marketplace.",
+            "redirect": "Le pagine prodotto già indicizzate reindirizzano alla scheda della tua attività.",
+            "links": "La tua scheda resta online nella directory e i tuoi link esistenti continuano a funzionare."
+          },
+          "confirm": "Disattiva",
+          "cancel": "Annulla"
+        },
+        "toasts": {
+          "enabled": "Canale marketplace attivato.",
+          "disabled": "Canale marketplace disattivato.",
+          "termsAccepted": "Condizioni del marketplace accettate."
+        },
+        "cohort": {
+          "memberTitle": "Offerta reeent a vita — 0 € di commissione reeent",
+          "memberRank": "Membro n° {rank} della coorte di lancio",
+          "incentiveBadge": "Offerta di lancio",
+          "incentiveLine": "ancora {remaining} posti con 0 € di commissione reeent a vita"
+        }
       }
     },
     "commandPalette": {
@@ -6490,6 +6626,9 @@
         "depositDescription": "L'importo è stato temporaneamente bloccato sulla tua carta."
       }
     },
+    "marketplaceShell": {
+      "marketplaceName": "Louez Marketplace"
+    },
     "footer": {
       "description": "Noleggio attrezzature semplice ed efficiente.",
       "contact": "Contatto",
@@ -6612,7 +6751,8 @@
         "upTo20": "Da 6 a 20",
         "upTo50": "Da 21 a 50",
         "moreThan50": "Più di 50"
-      }
+      },
+      "individualNote": "Non serve un'azienda per iniziare: crea la tua pagina, pubblica i tuoi oggetti e incassa online. I redditi da noleggio vanno dichiarati in base alla tua situazione."
     },
     "store": {
       "title": "Informazioni del tuo negozio",
@@ -6688,6 +6828,17 @@
       "requestModeDescription": "I clienti inviano una richiesta. Confermi e incassi tu stesso (contanti, bonifico, carta in negozio).",
       "requestModeNote": "Confermi e incassi ogni prenotazione. Potrai passare al pagamento online in qualsiasi momento dalle impostazioni.",
       "configComplete": "Configurazione completata!",
+      "reeent": {
+        "title": "Attiva il pagamento online",
+        "description": "Su reeent i tuoi clienti prenotano e pagano online. È questo che rende il tuo negozio «Réservable en ligne» e lo fa salire nei risultati.",
+        "whyTitle": "Perché è necessario",
+        "panelWhyTitle": "Perché Stripe su reeent?",
+        "why1": "Il pagamento va direttamente dal cliente al tuo conto bancario, tramite Stripe. Né reeent né Louez toccano il denaro.",
+        "why2": "È questo che rende possibile la prenotazione immediata, senza solleciti né insoluti da gestire.",
+        "withoutStripe": "Senza un account Stripe attivo il tuo negozio Louez funziona (le prenotazioni passano alla conferma manuale), ma comparirà su reeent solo quando Stripe sarà attivo.",
+        "later": "Più tardi",
+        "laterNote": "Puoi attivarlo dalla dashboard quando vuoi. Il tuo negozio verrà pubblicato su reeent automaticamente non appena Stripe sarà attivo; nel frattempo le prenotazioni Louez passano alla conferma manuale."
+      },
       "panel": {
         "payment": {
           "benefitsTitle": "Perché il pagamento online?",
@@ -6759,7 +6910,45 @@
       "product": "Primo prodotto",
       "payment": "Pagamenti",
       "profile": "Profilo",
-      "source": "Fonte"
+      "source": "Fonte",
+      "reeent": "reeent"
+    },
+    "reeent": {
+      "title": "Arrivi da <reeent>reeent</reeent>",
+      "description": "Una domanda prima di creare il tuo negozio.",
+      "introDescription": "Tre punti, poi una domanda.",
+      "status": {
+        "label": "Noleggi",
+        "professional": "Come professionista",
+        "professionalHint": "Hai un'azienda, un'associazione o un'attività registrata.",
+        "individual": "Come privato",
+        "individualHint": "Noleggi le tue cose, senza azienda.",
+        "hint": "Il tuo stato è mostrato su reeent e adatta il seguito."
+      },
+      "panel": {
+        "title": "L'essenziale",
+        "products": {
+          "title": "Due prodotti, un account",
+          "body": "reeent è la vetrina: è lì che i clienti trovano la tua attrezzatura. Louez è il tuo strumento: prenotazioni, pagamenti e calendario si gestiscono qui.",
+          "individualBody": "Non serve un'azienda. reeent è la vetrina, Louez è il tuo strumento: pubblica i tuoi oggetti, gestisci le prenotazioni e incassa online."
+        },
+        "offer": {
+          "title": "Offerta di lancio",
+          "body": "I primi {total} noleggiatori pubblicati su reeent mantengono 0 € di commissione reeent, per sempre.",
+          "remaining": "Restano {remaining} posti su {total}.",
+          "closedBody": "L'offerta di lancio è esaurita. Pubblicare su reeent resta il modo più semplice per farsi trovare."
+        },
+        "pricing": {
+          "title": "Quanto costa Louez",
+          "amount": "1 €",
+          "amountUnit": "per prenotazione",
+          "amountDetail": "Decrescente al volume.",
+          "quietMonth": "Un mese senza noleggi: nulla da pagare.",
+          "subscription": "Un abbonamento mensile se noleggi molto.",
+          "switch": "Passi dall'uno all'altro quando vuoi.",
+          "individualNote": "I redditi da noleggio vanno dichiarati in base alla tua situazione; se l'attività diventa professionale, ti chiederemo di cambiare stato."
+        }
+      }
     }
   },
   "categories": {
@@ -7159,7 +7348,8 @@
     "standaloneSingleStore": "Questa istanza ospita un solo negozio",
     "emailLoginUnavailable": "L'accesso via email non è al momento disponibile",
     "stripeNotConfigured": "I pagamenti online non sono disponibili: questa istanza non ha chiavi Stripe configurate. Le prenotazioni funzionano in modalità richiesta.",
-    "emailSendFailed": "Invio dell'email non riuscito."
+    "emailSendFailed": "Invio dell'email non riuscito.",
+    "marketplaceChannelNotFound": "Canale marketplace non trovato"
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

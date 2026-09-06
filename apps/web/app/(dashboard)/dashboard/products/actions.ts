@@ -13,6 +13,7 @@ import {
 import {
   categories,
   getBlockingReservationStatuses,
+  marketplaceCatalogTombstones,
   productAccessories,
   productCategories,
   productPricingTiers,
@@ -797,102 +798,112 @@ export async function updateProduct(productId: string, data: ProductInput) {
   const categoryIds = await resolveCategoryIds(store.id, validated.data);
 
   const stockKindChangeExpected = product.stockKind !== stockKind;
-  const productUpdate = await retryOnceOnDeadlock(() => db.transaction(async (tx) => {
-    const canChangeStockKind = stockKindChangeExpected
-      ? await lockProductReservationsForStockKindChange(tx, {
-          productId,
-          storeId: store.id,
-        })
-      : true;
-    const [lockedProduct] = await tx
-      .select({ stockKind: products.stockKind })
-      .from(products)
-      .where(and(eq(products.id, productId), eq(products.storeId, store.id)))
-      .for("update");
+  const productUpdate = await retryOnceOnDeadlock(() =>
+    db.transaction(async (tx) => {
+      const canChangeStockKind = stockKindChangeExpected
+        ? await lockProductReservationsForStockKindChange(tx, {
+            productId,
+            storeId: store.id,
+          })
+        : true;
+      const [lockedProduct] = await tx
+        .select({ stockKind: products.stockKind })
+        .from(products)
+        .where(and(eq(products.id, productId), eq(products.storeId, store.id)))
+        .for("update");
 
-    if (!lockedProduct) {
-      return { error: "errors.productNotFound" };
-    }
+      if (!lockedProduct) {
+        return { error: "errors.productNotFound" };
+      }
 
-    if (
-      lockedProduct.stockKind !== stockKind &&
-      (!stockKindChangeExpected || !canChangeStockKind)
-    ) {
-      return { error: "errors.cannotChangeStockKindWithActiveReservations" };
-    }
-
-    await tx
-      .update(products)
-      .set({
-        name: validated.data.name,
-        description: validated.data.description || null,
-        aiContext: validated.data.aiContext?.trim() || null,
-        categoryId: categoryIds[0] ?? null,
-        price: price,
-        deposit: deposit,
-        pricingMode: legacyPricingMode,
-        pricingKind,
-        stockKind,
-        basePeriodMinutes,
-        ...(!trackUnits ? { quantity: manualQuantity } : {}),
-        status: validated.data.status,
-        images: validated.data.images || [],
-        imageHistory: validated.data.imageHistory || [],
-        videoUrl: validated.data.videoUrl || null,
-        taxSettings: validated.data.taxSettings || null,
-        enforceStrictTiers:
-          pricingKind === "fixed" ? false : validated.data.enforceStrictTiers || false,
-        trackUnits: trackUnits,
-        bookingAttributeAxes:
-          trackUnits && bookingAttributeAxes.length > 0 ? bookingAttributeAxes : null,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(products.id, productId), eq(products.storeId, store.id)));
-
-    await replaceProductCategories(tx, productId, categoryIds);
-
-    await replaceProductAccessories(tx, {
-      storeId: store.id,
-      productId,
-      links: validated.data.accessories ?? [],
-    });
-
-    await tx.delete(productPricingTiers).where(eq(productPricingTiers.productId, productId));
-
-    if (rateTierRows.length > 0) {
-      await tx.insert(productPricingTiers).values(
-        rateTierRows.map((tier, index) => ({
-          id: tier.id || nanoid(),
-          productId: productId,
-          minDuration: tier.minDuration,
-          discountPercent: tier.discountPercent,
-          period: tier.period,
-          price: tier.price,
-          displayOrder: index,
-        })),
-      );
-    }
-
-    if (pricingKind === "fixed") {
-      const seasonalPricings = await tx
-        .select({ id: productSeasonalPricing.id })
-        .from(productSeasonalPricing)
-        .where(eq(productSeasonalPricing.productId, productId));
-      const seasonalPricingIds = seasonalPricings.map(({ id }) => id);
-
-      if (seasonalPricingIds.length > 0) {
-        await tx
-          .delete(productSeasonalPricingTiers)
-          .where(inArray(productSeasonalPricingTiers.seasonalPricingId, seasonalPricingIds));
+      if (
+        lockedProduct.stockKind !== stockKind &&
+        (!stockKindChangeExpected || !canChangeStockKind)
+      ) {
+        return { error: "errors.cannotChangeStockKindWithActiveReservations" };
       }
 
       await tx
-        .delete(productSeasonalPricing)
-        .where(eq(productSeasonalPricing.productId, productId));
-    }
+        .update(products)
+        .set({
+          name: validated.data.name,
+          description: validated.data.description || null,
+          aiContext: validated.data.aiContext?.trim() || null,
+          categoryId: categoryIds[0] ?? null,
+          price: price,
+          deposit: deposit,
+          pricingMode: legacyPricingMode,
+          pricingKind,
+          stockKind,
+          basePeriodMinutes,
+          ...(!trackUnits ? { quantity: manualQuantity } : {}),
+          status: validated.data.status,
+          images: validated.data.images || [],
+          imageHistory: validated.data.imageHistory || [],
+          videoUrl: validated.data.videoUrl || null,
+          taxSettings: validated.data.taxSettings || null,
+          enforceStrictTiers:
+            pricingKind === "fixed" ? false : validated.data.enforceStrictTiers || false,
+          trackUnits: trackUnits,
+          bookingAttributeAxes:
+            trackUnits && bookingAttributeAxes.length > 0 ? bookingAttributeAxes : null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(products.id, productId), eq(products.storeId, store.id)));
 
-    return { success: true };
-  }));
+      await replaceProductCategories(tx, productId, categoryIds);
+
+      await replaceProductAccessories(tx, {
+        storeId: store.id,
+        productId,
+        links: validated.data.accessories ?? [],
+      });
+
+      await tx.delete(productPricingTiers).where(eq(productPricingTiers.productId, productId));
+
+      if (rateTierRows.length > 0) {
+        await tx.insert(productPricingTiers).values(
+          rateTierRows.map((tier, index) => ({
+            id: tier.id || nanoid(),
+            productId: productId,
+            minDuration: tier.minDuration,
+            discountPercent: tier.discountPercent,
+            period: tier.period,
+            price: tier.price,
+            displayOrder: index,
+          })),
+        );
+      }
+
+      if (pricingKind === "fixed") {
+        const seasonalPricings = await tx
+          .select({ id: productSeasonalPricing.id })
+          .from(productSeasonalPricing)
+          .where(eq(productSeasonalPricing.productId, productId));
+        const seasonalPricingIds = seasonalPricings.map(({ id }) => id);
+
+        if (seasonalPricingIds.length > 0) {
+          await tx
+            .delete(productSeasonalPricingTiers)
+            .where(inArray(productSeasonalPricingTiers.seasonalPricingId, seasonalPricingIds));
+        }
+
+        await tx
+          .delete(productSeasonalPricing)
+          .where(eq(productSeasonalPricing.productId, productId));
+      }
+
+      if (product.status === "active" && validated.data.status !== "active") {
+        await tx.insert(marketplaceCatalogTombstones).values({
+          entityType: "product",
+          entityId: productId,
+          deletedAt: new Date(),
+        });
+      }
+
+      return { success: true };
+    }),
+  );
 
   if ("error" in productUpdate) {
     return productUpdate;
@@ -1041,13 +1052,23 @@ export async function updateProductStatus(
     return { error: "errors.productNotFound" };
   }
 
-  await db
-    .update(products)
-    .set({
-      status,
-      updatedAt: new Date(),
-    })
-    .where(eq(products.id, productId));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(products)
+      .set({
+        status,
+        updatedAt: new Date(),
+      })
+      .where(eq(products.id, productId));
+
+    if (product.status === "active" && status !== "active") {
+      await tx.insert(marketplaceCatalogTombstones).values({
+        entityType: "product",
+        entityId: productId,
+        deletedAt: new Date(),
+      });
+    }
+  });
 
   revalidatePath("/dashboard/products");
   return { success: true };
@@ -1119,6 +1140,11 @@ export async function deleteProduct(productId: string) {
       })),
     );
 
+    await tx.insert(marketplaceCatalogTombstones).values({
+      entityType: "product",
+      entityId: productId,
+      deletedAt: new Date(),
+    });
     await tx.delete(products).where(eq(products.id, productId));
   });
 

@@ -154,6 +154,14 @@ export const env = createEnv({
     // Optional: cron routes reject requests until it is set.
     CRON_SECRET: z.string().optional(),
 
+    // ===== Marketplace catalog (Optional until the channel is configured) =====
+    // Catalog routes reject requests until it is set.
+    MARKETPLACE_CATALOG_SECRET: z.string().optional(),
+    // Public origin of the Louez Marketplace, used server-side to read the
+    // shared product taxonomy. When unset (or unreachable) the sales-channel
+    // category mapping editor degrades to free slug input.
+    MARKETPLACE_URL: z.url("MARKETPLACE_URL must be a valid URL").optional(),
+
     // ===== AI Chat Assistant (Optional) =====
     AI_PROVIDER: z.enum(["anthropic", "openai", "google"]).optional(),
     AI_MODEL: z.string().optional(),
@@ -325,6 +333,14 @@ export const env = createEnv({
     // changing this only affects accounts created afterwards. Default 15.
     PAYG_FREE_RESERVATIONS: z.coerce.number().int().min(0).max(100_000).default(15),
 
+    // First stores published on reeent receive a lifetime marketplace-fee waiver.
+    REEENT_LAUNCH_COHORT_SIZE: z.coerce.number().int().min(0).max(1_000_000).default(1_000),
+    // Inert until the updated CGV notice period has elapsed and production opts in.
+    MARKETPLACE_DEFAULT_PUBLICATION_ENABLED: z
+      .string()
+      .default("false")
+      .transform((value) => value === "true"),
+
     PAYG_DEFAULT_PRICING: z
       .string()
       .optional()
@@ -431,6 +447,8 @@ export const env = createEnv({
     SUPERPDP_ENVIRONMENT: process.env.SUPERPDP_ENVIRONMENT,
     SUPERPDP_REDIRECT_URL: process.env.SUPERPDP_REDIRECT_URL,
     CRON_SECRET: process.env.CRON_SECRET,
+    MARKETPLACE_CATALOG_SECRET: process.env.MARKETPLACE_CATALOG_SECRET,
+    MARKETPLACE_URL: process.env.MARKETPLACE_URL,
     AI_PROVIDER: process.env.AI_PROVIDER,
     AI_MODEL: process.env.AI_MODEL,
     AI_API_KEY: process.env.AI_API_KEY,
@@ -487,6 +505,8 @@ export const env = createEnv({
     PREVIEW_STORE_SLUG: process.env.PREVIEW_STORE_SLUG,
     PAYG_DEFAULT_PRICING: process.env.PAYG_DEFAULT_PRICING,
     PAYG_FREE_RESERVATIONS: process.env.PAYG_FREE_RESERVATIONS,
+    REEENT_LAUNCH_COHORT_SIZE: process.env.REEENT_LAUNCH_COHORT_SIZE,
+    MARKETPLACE_DEFAULT_PUBLICATION_ENABLED: process.env.MARKETPLACE_DEFAULT_PUBLICATION_ENABLED,
     REFERRAL_REFERRER_REWARD: process.env.REFERRAL_REFERRER_REWARD,
     REFERRAL_REFERRED_REWARD: process.env.REFERRAL_REFERRED_REWARD,
     REFERRAL_MIN_QUALIFYING_CENTS: process.env.REFERRAL_MIN_QUALIFYING_CENTS,

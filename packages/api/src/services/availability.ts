@@ -2,6 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 
 import {
   buildReservationOverlapPredicate,
+  buildReservationAvailabilityPredicate,
   buildUnitRentableDuringPredicate,
   db,
   type Database,
@@ -201,7 +202,7 @@ const WEEKDAY_INDEX: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = {
   Sat: 6,
 };
 
-function normalizeTimezone(timezone: unknown): string | undefined {
+export function normalizeTimezone(timezone: unknown): string | undefined {
   if (typeof timezone !== 'string') {
     return undefined;
   }
@@ -481,6 +482,7 @@ export async function getStorefrontAvailability(
     where: and(
       eq(reservations.storeId, store.id),
       inArray(reservations.status, blockingStatuses),
+      buildReservationAvailabilityPredicate(db),
       buildReservationOverlapPredicate({
         start: startDate,
         end: endDate,

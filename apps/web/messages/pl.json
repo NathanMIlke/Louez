@@ -160,6 +160,8 @@
     "or": "lub",
     "loginTitle": "Witamy w louez",
     "loginDescription": "Wpisz swój email, aby kontynuować. Jeśli nie masz konta, zostanie utworzone automatycznie.",
+    "reeentLoginTitle": "Witamy w louez × <reeent>reeent</reeent>",
+    "reeentLoginDescription": "reeent to witryna, louez to Twoje narzędzie: rezerwacje, płatności i kalendarz obsługujesz tutaj. Jeśli nie masz konta, zostanie utworzone automatycznie.",
     "linkWillBeSent": "Bezpieczny link zostanie wysłany na Twój email. Bez hasła do zapamiętania.",
     "checkEmail": "Sprawdź swoją skrzynkę",
     "emailSentTo": "Link logowania został wysłany na",
@@ -416,6 +418,9 @@
       "manage": "Zarządzaj",
       "dashboard": "Panel",
       "viewStore": "Zobacz sklep",
+      "viewOnReeent": "Zobacz moją stronę reeent",
+      "openStorefront": "Moja strona",
+      "openReeentListing": "Moja strona reeent",
       "newReservation": "Nowa rezerwacja",
       "reservationLimitReached": "Limit osiagniety",
       "help": "Pomoc",
@@ -723,6 +728,13 @@
         "description": "Twoi klienci czekają na odpowiedź",
         "action": "Obsłuż"
       },
+      "reeentStripe": {
+        "title": "Twój sklep nie jest jeszcze widoczny na <reeent>reeent</reeent>",
+        "description": "Dopóki płatności online nie są aktywne, reeent nie publikuje Twojego sklepu. Oferta startowa (0 € prowizji reeent na zawsze) obowiązuje od publikacji, dopóki są wolne miejsca.",
+        "continueSetup": "Kontynuuj konfigurację Stripe",
+        "activate": "Aktywuj płatności online",
+        "paymentSettings": "Ustawienia płatności"
+      },
       "setup": {
         "title": "Pierwsze kroki",
         "description": "Kilka kroków na początek",
@@ -738,6 +750,7 @@
         "descriptions": {
           "addFirstProduct": "Dodaj swój pierwszy produkt, aby klienci mogli rezerwować.",
           "connectStripe": "Połącz Stripe, aby przyjmować płatności kartą przy rezerwacji.",
+          "connectStripeReeent": "Dopóki Stripe nie jest aktywny, Twój sklep nie jest widoczny na reeent. Połącz Stripe, aby zostać opublikowanym i przyjmować płatności kartą.",
           "firstReservation": "Udostępnij swój sklep klientom lub utwórz rezerwację ręcznie.",
           "firstCompleted": "Po zwrocie wynajmu oznacz rezerwację jako zakończoną."
         },
@@ -1826,6 +1839,7 @@
       "source": "Źródło",
       "sourceOnline": "Online",
       "sourceManual": "Ręczna",
+      "sourceMarketplace": "Marketplace",
       "internalNotes": "Notatki wewnętrzne",
       "internalNotesPlaceholder": "Dodaj notatki o tej rezerwacji...",
       "internalNotesHelp": "Te notatki nie są widoczne dla klienta",
@@ -5352,6 +5366,128 @@
           "communication": "Komunikacja",
           "accountData": "Konto i dane"
         }
+      },
+      "salesChannels": {
+        "title": "Kanały sprzedaży",
+        "description": "Wybierz, gdzie Twoje produkty są oferowane do wynajmu.",
+        "channels": {
+          "heading": "Gdzie chcesz otrzymywać rezerwacje?",
+          "subheading": "Włącz tyle kanałów, ile chcesz: korzystają z tego samego katalogu, tych samych stanów i tego samego silnika rezerwacji.",
+          "marketplace": {
+            "name": "Marketplace Louez",
+            "description": "Twoje produkty pojawiają się w publicznej wyszukiwarce marketplace, z rezerwacją bezpośrednią.",
+            "recommended": "Zalecane",
+            "enableLabel": "Włącz kanał marketplace",
+            "benefits": {
+              "visibility": "Nowi klienci z wyszukiwarki marketplace.",
+              "seo": "Dedykowana strona Twojej firmy, indeksowana przez wyszukiwarki.",
+              "free": "Bezpłatnie na start, bez prowizji od Twoich rezerwacji."
+            }
+          },
+          "storefront": {
+            "name": "Mój sklep internetowy",
+            "description": "Twoja strona rezerwacji, dostępna, gdy tylko sklep nadaje się do publikacji.",
+            "alwaysOn": "Zawsze aktywny",
+            "note": "Tego kanału nie można wyłączyć: to on obsługuje rezerwacje, także te z marketplace.",
+            "viewAction": "Zobacz mój sklep",
+            "customizeAction": "Dostosuj wygląd"
+          }
+        },
+        "status": {
+          "label": "Status",
+          "values": {
+            "setup_required": "Wymagana konfiguracja",
+            "pending": "Oczekuje na publikację",
+            "published": "Opublikowany",
+            "paused": "Wstrzymany",
+            "disabled": "Wyłączony"
+          },
+          "publishedAt": "Opublikowano {date}",
+          "reason": {
+            "disabledByOwner": "Wyłączyłeś ten kanał.",
+            "missing": "Część punktów listy kontrolnej wciąż wymaga uzupełnienia."
+          }
+        },
+        "checklist": {
+          "title": "Lista kontrolna publikacji",
+          "description": "Twój sklep trafia na marketplace, gdy tylko wszystkie te punkty zostaną spełnione.",
+          "progress": "{done} z {total} spełnionych",
+          "completeDescription": "Wszystko gotowe: sklep trafi tam przy najbliższej synchronizacji.",
+          "fixAction": "Uzupełnij",
+          "doneLabel": "Spełnione",
+          "items": {
+            "addressAndGeolocation": {
+              "label": "Adres i geolokalizacja",
+              "description": "Pełny adres wraz ze współrzędnymi umieszcza Cię na mapie."
+            },
+            "activeProductWithImageAndPrice": {
+              "label": "Przynajmniej jeden aktywny produkt",
+              "description": "Aktywny produkt z co najmniej jednym zdjęciem i ceną."
+            },
+            "stripeChargesEnabled": {
+              "label": "Działające płatności Stripe",
+              "description": "Twoje konto Stripe przyjmuje płatności online."
+            },
+            "cgvPresent": {
+              "label": "Warunki wynajmu",
+              "description": "Twoje ogólne warunki wynajmu są uzupełnione."
+            },
+            "marketplaceTermsAccepted": {
+              "label": "Zaakceptowane warunki marketplace",
+              "description": "Marketplace jest bezpłatny na start. Warunki zastrzegają możliwość wprowadzenia w przyszłości prowizji od rezerwacji pochodzących z marketplace.",
+              "acceptedAt": "Zaakceptowano {date}"
+            }
+          }
+        },
+        "claim": {
+          "title": "Twoja firma może już znajdować się na marketplace",
+          "description": "Potwierdź tylko wpis, który rozpoznajesz jako swoją firmę. Wpisy nigdy nie są łączone automatycznie.",
+          "confirmAction": "To jest moja firma",
+          "noneAction": "Żadna z tych firm",
+          "linkedTitle": "Wpis w katalogu połączony",
+          "linkedDescription": "Marketplace zachowa istniejący wpis i jego adres URL podczas publikacji.",
+          "linkedFallback": "Połączona firma",
+          "mergeHint": "Ten wpis zostanie połączony z Twoim sklepem podczas publikacji.",
+          "unlinkAction": "Usuń połączenie",
+          "distanceMeters": "{distance} m",
+          "distanceKilometers": "{distance} km",
+          "confirmedToast": "Firma została połączona z Twoim sklepem.",
+          "dismissedToast": "Nie wybrano wpisu z katalogu.",
+          "unlinkedToast": "Połączenie z firmą zostało usunięte."
+        },
+        "mapping": {
+          "title": "Dopasowanie kategorii",
+          "description": "Przypisz każdą ze swoich kategorii do kategorii marketplace, aby Twoje produkty pojawiały się we właściwych wynikach wyszukiwania.",
+          "none": "Brak dopasowania",
+          "fallbackHint": "Katalog marketplace jest niedostępny. Wpisz identyfikator kategorii bezpośrednio, małymi literami z myślnikami.",
+          "fallbackPlaceholder": "velo-vtt-electrique",
+          "invalidSlug": "Nieprawidłowy identyfikator: tylko małe litery, cyfry i myślniki.",
+          "empty": "Nie masz jeszcze żadnej kategorii.",
+          "emptyAction": "Utwórz kategorię",
+          "saved": "Dopasowania zapisane."
+        },
+        "disable": {
+          "title": "Wyłączyć marketplace?",
+          "description": "Twoje produkty nie będą już oferowane na marketplace. Kanał możesz włączyć ponownie w dowolnym momencie.",
+          "consequences": {
+            "search": "Twoje produkty szybko znikają z wyszukiwarki marketplace.",
+            "redirect": "Zaindeksowane strony produktów przekierowują do wizytówki Twojej firmy.",
+            "links": "Twoja wizytówka pozostaje w katalogu, a istniejące linki nadal działają."
+          },
+          "confirm": "Wyłącz",
+          "cancel": "Anuluj"
+        },
+        "toasts": {
+          "enabled": "Kanał marketplace włączony.",
+          "disabled": "Kanał marketplace wyłączony.",
+          "termsAccepted": "Warunki marketplace zaakceptowane."
+        },
+        "cohort": {
+          "memberTitle": "Oferta reeent na zawsze — 0 € prowizji reeent",
+          "memberRank": "Członek nr {rank} kohorty startowej",
+          "incentiveBadge": "Oferta startowa",
+          "incentiveLine": "jeszcze {remaining} miejsc z 0 € prowizji reeent na zawsze"
+        }
       }
     },
     "commandPalette": {
@@ -6490,6 +6626,9 @@
         "depositDescription": "Kwota została tymczasowo zablokowana na Twojej karcie."
       }
     },
+    "marketplaceShell": {
+      "marketplaceName": "Louez Marketplace"
+    },
     "footer": {
       "description": "Prosty i efektywny wynajem sprzętu.",
       "contact": "Kontakt",
@@ -6612,7 +6751,8 @@
         "upTo20": "6 do 20",
         "upTo50": "21 do 50",
         "moreThan50": "Ponad 50"
-      }
+      },
+      "individualNote": "Nie potrzebujesz firmy, aby zacząć: utwórz swoją stronę, opublikuj przedmioty i przyjmuj płatności online. Przychody z wynajmu należy rozliczyć zgodnie z Twoją sytuacją."
     },
     "store": {
       "title": "Informacje o sklepie",
@@ -6688,6 +6828,17 @@
       "requestModeDescription": "Klienci wysyłają prośbę. Ty zatwierdzasz i pobierasz płatność samodzielnie (gotówka, przelew, karta na miejscu).",
       "requestModeNote": "Zatwierdzasz i pobierasz płatność za każdą rezerwację. W każdej chwili możesz przejść na płatności online w ustawieniach.",
       "configComplete": "Konfiguracja zakończona!",
+      "reeent": {
+        "title": "Włącz płatności online",
+        "description": "Na reeent klienci rezerwują i płacą online. Dzięki temu Twój sklep jest „Réservable en ligne” i wyżej w wynikach.",
+        "whyTitle": "Dlaczego to konieczne",
+        "panelWhyTitle": "Dlaczego Stripe na reeent?",
+        "why1": "Płatność trafia bezpośrednio od klienta na Twoje konto bankowe, przez Stripe. Ani reeent, ani Louez nie dotykają pieniędzy.",
+        "why2": "To właśnie dzięki temu rezerwacja jest natychmiastowa — bez ponagleń i zaległych płatności po Twojej stronie.",
+        "withoutStripe": "Bez aktywnego konta Stripe Twój sklep Louez nadal działa (rezerwacje przechodzą na ręczne zatwierdzanie), ale na reeent pojawi się dopiero wtedy, gdy Stripe będzie aktywny.",
+        "later": "Później",
+        "laterNote": "Możesz to włączyć z poziomu panelu w dowolnym momencie. Twój sklep zostanie opublikowany na reeent automatycznie, gdy tylko Stripe będzie aktywny; do tego czasu rezerwacje Louez przechodzą na ręczne zatwierdzanie."
+      },
       "panel": {
         "payment": {
           "benefitsTitle": "Dlaczego płatność online?",
@@ -6759,7 +6910,45 @@
       "product": "Pierwszy produkt",
       "payment": "Płatności",
       "profile": "Profil",
-      "source": "Źródło"
+      "source": "Źródło",
+      "reeent": "reeent"
+    },
+    "reeent": {
+      "title": "Trafiłeś tu z <reeent>reeent</reeent>",
+      "description": "Jedno pytanie, zanim założysz sklep.",
+      "introDescription": "Trzy punkty, potem jedno pytanie.",
+      "status": {
+        "label": "Wynajmujesz",
+        "professional": "Jako firma",
+        "professionalHint": "Masz firmę, stowarzyszenie lub zarejestrowaną działalność.",
+        "individual": "Jako osoba prywatna",
+        "individualHint": "Wynajmujesz własne rzeczy, bez firmy.",
+        "hint": "Twój status jest widoczny na reeent i dostosowuje dalszą część."
+      },
+      "panel": {
+        "title": "Co warto wiedzieć",
+        "products": {
+          "title": "Dwa produkty, jedno konto",
+          "body": "reeent to witryna: tam klienci znajdują Twój sprzęt. Louez to Twoje narzędzie: rezerwacje, płatności i kalendarz prowadzisz tutaj.",
+          "individualBody": "Nie potrzebujesz firmy. reeent to witryna, Louez to Twoje narzędzie: dodaj swoje rzeczy, zarządzaj rezerwacjami i przyjmuj płatności online."
+        },
+        "offer": {
+          "title": "Oferta na start",
+          "body": "Pierwszych {total} wynajmujących opublikowanych na reeent zachowuje 0 € prowizji reeent, na zawsze.",
+          "remaining": "Zostało {remaining} miejsc z {total}.",
+          "closedBody": "Oferta na start jest wyczerpana. Publikacja na reeent nadal jest najprostszym sposobem, by być widocznym."
+        },
+        "pricing": {
+          "title": "Ile kosztuje Louez",
+          "amount": "1 €",
+          "amountUnit": "za rezerwację",
+          "amountDetail": "Taniej przy większej liczbie.",
+          "quietMonth": "Miesiąc bez wynajmu: nic do zapłaty.",
+          "subscription": "Abonament miesięczny, jeśli wynajmujesz dużo.",
+          "switch": "Formułę zmieniasz, kiedy chcesz.",
+          "individualNote": "Przychody z wynajmu rozliczasz zgodnie ze swoją sytuacją; jeśli działalność stanie się zawodowa, poprosimy o zmianę statusu."
+        }
+      }
     }
   },
   "categories": {
@@ -7159,7 +7348,8 @@
     "standaloneSingleStore": "Ta instancja obsługuje tylko jeden sklep",
     "emailLoginUnavailable": "Logowanie przez e-mail jest obecnie niedostępne",
     "stripeNotConfigured": "Płatności online są niedostępne: ta instancja nie ma skonfigurowanych kluczy Stripe. Rezerwacje działają w trybie zapytania.",
-    "emailSendFailed": "Nie udało się wysłać wiadomości e-mail."
+    "emailSendFailed": "Nie udało się wysłać wiadomości e-mail.",
+    "marketplaceChannelNotFound": "Nie znaleziono kanału marketplace"
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

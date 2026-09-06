@@ -1,232 +1,233 @@
-import type { ComponentType, PropsWithChildren } from 'react'
+import type { ComponentType, PropsWithChildren } from "react";
 import {
   Document as BaseDocument,
   Page as BasePage,
   Text as BaseText,
   View as BaseView,
   Image as BaseImage,
-} from '@react-pdf/renderer'
-import { createContractStyles } from './styles'
-import { parseCgvHtml } from './cgv-parser'
-import { formatStoreDate } from '@/lib/utils/store-date'
-import { toAbsoluteUrl } from '@louez/utils'
-import { env } from '@/env'
-import type { ReservationLocationSnapshot } from '@louez/types'
-import { getConfiguredFormatLocale } from '@/lib/i18n/configured-format-locale'
+} from "@react-pdf/renderer";
+import { createContractStyles } from "./styles";
+import { parseCgvHtml } from "./cgv-parser";
+import { formatStoreDate } from "@/lib/utils/store-date";
+import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
+import { toAbsoluteUrl } from "@louez/utils";
+import { env } from "@/env";
+import type { ReservationLocationSnapshot } from "@louez/types";
 
 // Cast react-pdf components to React types for TS/React 19 compatibility.
-type PdfComponent = ComponentType<PropsWithChildren<Record<string, unknown>>>
-const Document = BaseDocument as unknown as PdfComponent
-const Page = BasePage as unknown as PdfComponent
-const Text = BaseText as unknown as PdfComponent
-const View = BaseView as unknown as PdfComponent
-const Image = BaseImage as unknown as PdfComponent
+type PdfComponent = ComponentType<PropsWithChildren<Record<string, unknown>>>;
+const Document = BaseDocument as unknown as PdfComponent;
+const Page = BasePage as unknown as PdfComponent;
+const Text = BaseText as unknown as PdfComponent;
+const View = BaseView as unknown as PdfComponent;
+const Image = BaseImage as unknown as PdfComponent;
 
 // Types for contract translations
 export interface ContractTranslations {
-  documentType: string
-  documentNumber: string
-  reservationNumber: string
+  documentType: string;
+  documentNumber: string;
+  reservationNumber: string;
   sections: {
-    rentalPeriod: string
-    rentedEquipment: string
-    payments: string
-    conditions: string
-    signatures: string
-    legalMentions: string
-    fullCgvAnnex: string
-  }
+    rentalPeriod: string;
+    rentedEquipment: string;
+    payments: string;
+    conditions: string;
+    signatures: string;
+    legalMentions: string;
+    fullCgvAnnex: string;
+  };
   parties: {
-    landlord: string
-    customer: string
-    contact: string
-  }
+    landlord: string;
+    customer: string;
+    contact: string;
+  };
   period: {
-    start: string
-    end: string
-    at: string
-    delivery: string
-    pickup: string
-  }
+    start: string;
+    end: string;
+    at: string;
+    delivery: string;
+    pickup: string;
+  };
   table: {
-    designation: string
-    qty: string
-    unitPrice: string
-    total: string
-    unitIdentifiers?: string
-  }
+    designation: string;
+    qty: string;
+    unitPrice: string;
+    total: string;
+    unitIdentifiers?: string;
+  };
   totals: {
-    subtotalHT: string
-    tax: string
-    deliveryFee: string
-    totalTTC: string
-    deposit: string
-  }
+    subtotalHT: string;
+    tax: string;
+    deliveryFee: string;
+    totalTTC: string;
+    deposit: string;
+  };
   paymentTypes: {
-    rental: string
-    deposit: string
-    deposit_return: string
-    damage: string
-  }
+    rental: string;
+    deposit: string;
+    deposit_return: string;
+    damage: string;
+  };
   paymentMethods: {
-    stripe: string
-    cash: string
-    card: string
-    transfer: string
-    check: string
-    other: string
-  }
+    stripe: string;
+    cash: string;
+    card: string;
+    transfer: string;
+    check: string;
+    other: string;
+  };
   paymentStatus: {
-    completed: string
-    pending: string
-  }
+    completed: string;
+    pending: string;
+  };
   signature: {
-    validated: string
-    signed: string
-    landlordText: string
-    customerText: string
-    dateLabel: string
-    ipLabel: string
-  }
+    validated: string;
+    signed: string;
+    pending: string;
+    landlordText: string;
+    customerText: string;
+    dateLabel: string;
+    ipLabel: string;
+  };
   conditions: {
-    condition1: string
-    condition2: string
-    condition3: string
-    termsLink: string
-  }
+    condition1: string;
+    condition2: string;
+    condition3: string;
+    termsLink: string;
+  };
   legal: {
-    text1: string
-    text2: string
-    companyInfo: string
-    tvaApplicable: string
-    tvaNotApplicable: string
-  }
+    text1: string;
+    text2: string;
+    companyInfo: string;
+    tvaApplicable: string;
+    tvaNotApplicable: string;
+  };
   footer: {
-    poweredBy: string
-    generatedOn: string
-  }
+    poweredBy: string;
+    generatedOn: string;
+  };
 }
 
-export type SupportedLocale = 'fr' | 'en'
+export type SupportedLocale = "fr" | "en";
 
 interface BillingAddress {
-  useSameAsStore: boolean
-  address?: string
-  city?: string
-  postalCode?: string
-  country?: string
+  useSameAsStore: boolean;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
 }
 
 interface Store {
-  name: string
-  slug: string
-  logoUrl?: string | null
-  address?: string | null
-  phone?: string | null
-  email?: string | null
-  siret?: string | null
-  tvaNumber?: string | null
-  primaryColor?: string
-  billingAddress?: BillingAddress | null
+  name: string;
+  slug: string;
+  logoUrl?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  siret?: string | null;
+  tvaNumber?: string | null;
+  primaryColor?: string;
+  billingAddress?: BillingAddress | null;
 }
 
 interface Customer {
-  firstName: string
-  lastName: string
-  email: string
-  customerType?: 'individual' | 'business' | null
-  companyName?: string | null
-  phone?: string | null
-  address?: string | null
-  city?: string | null
-  postalCode?: string | null
+  firstName: string;
+  lastName: string;
+  email: string;
+  customerType?: "individual" | "business" | null;
+  companyName?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
 }
 
 interface ReservationItem {
   productSnapshot: {
-    name: string
-    description?: string | null
-  }
-  quantity: number
-  unitPrice: string
-  totalPrice: string
-  assignedUnitIdentifiers?: string[]
+    name: string;
+    description?: string | null;
+  };
+  quantity: number;
+  unitPrice: string;
+  totalPrice: string;
+  assignedUnitIdentifiers?: string[];
 }
 
 interface Payment {
-  id: string
-  amount: string
-  type: 'rental' | 'deposit' | 'deposit_return' | 'damage'
-  method: 'stripe' | 'cash' | 'card' | 'transfer' | 'check' | 'other'
-  status: 'pending' | 'completed' | 'failed' | 'refunded'
-  paidAt?: Date | null
-  createdAt: Date
+  id: string;
+  amount: string;
+  type: "rental" | "deposit" | "deposit_return" | "damage";
+  method: "stripe" | "cash" | "card" | "transfer" | "check" | "other";
+  status: "pending" | "completed" | "failed" | "refunded";
+  paidAt?: Date | null;
+  createdAt: Date;
 }
 
 interface Reservation {
-  number: string
-  startDate: Date
-  endDate: Date
-  subtotalAmount: string
-  depositAmount: string
-  totalAmount: string
-  deliveryFee?: string | null
+  number: string;
+  startDate: Date;
+  endDate: Date;
+  subtotalAmount: string;
+  depositAmount: string;
+  totalAmount: string;
+  deliveryFee?: string | null;
   // Tax fields
-  subtotalExclTax?: string | null
-  taxAmount?: string | null
-  taxRate?: string | null
-  signedAt?: Date | null
-  signatureIp?: string | null
-  createdAt: Date
-  customer: Customer
-  items: ReservationItem[]
-  payments: Payment[]
+  subtotalExclTax?: string | null;
+  taxAmount?: string | null;
+  taxRate?: string | null;
+  signedAt?: Date | null;
+  signatureIp?: string | null;
+  createdAt: Date;
+  customer: Customer;
+  items: ReservationItem[];
+  payments: Payment[];
   // Delivery info
-  outboundMethod?: string | null
-  returnMethod?: string | null
-  deliveryAddress?: string | null
-  deliveryCity?: string | null
-  deliveryPostalCode?: string | null
-  returnAddress?: string | null
-  returnCity?: string | null
-  returnPostalCode?: string | null
-  pickupLocationSnapshot?: ReservationLocationSnapshot | null
-  returnLocationSnapshot?: ReservationLocationSnapshot | null
+  outboundMethod?: string | null;
+  returnMethod?: string | null;
+  deliveryAddress?: string | null;
+  deliveryCity?: string | null;
+  deliveryPostalCode?: string | null;
+  returnAddress?: string | null;
+  returnCity?: string | null;
+  returnPostalCode?: string | null;
+  pickupLocationSnapshot?: ReservationLocationSnapshot | null;
+  returnLocationSnapshot?: ReservationLocationSnapshot | null;
 }
 
 interface ContractDocumentProps {
-  reservation: Reservation
-  store: Store
+  reservation: Reservation;
+  store: Store;
   document: {
-    number: string
-    generatedAt: Date
-  }
-  locale: SupportedLocale
-  translations: ContractTranslations
-  currency?: string
-  timezone?: string
-  fullCgvHtml?: string | null
+    number: string;
+    generatedAt: Date;
+  };
+  locale: SupportedLocale;
+  translations: ContractTranslations;
+  currency?: string;
+  timezone?: string;
+  fullCgvHtml?: string | null;
 }
 
 // Currency formatting based on locale and currency
 function formatCurrencyValue(
   amount: number | string,
   locale: SupportedLocale,
-  currency: string = 'EUR'
+  currency: string = "EUR",
 ): string {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
 
   return new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
-    style: 'currency',
+    style: "currency",
     currency: currency,
   })
     .format(num)
-    .replace(/\u00A0/g, ' ')
-    .replace(/\u202F/g, ' ')
+    .replace(/\u00A0/g, " ")
+    .replace(/\u202F/g, " ");
 }
 
 function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1)
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 export function ContractDocument({
@@ -235,23 +236,24 @@ export function ContractDocument({
   document: doc,
   locale,
   translations: t,
-  currency = 'EUR',
+  currency = "EUR",
   timezone,
   fullCgvHtml,
 }: ContractDocumentProps) {
-  const primaryColor = store.primaryColor || '#0066FF'
-  const styles = createContractStyles(primaryColor)
-  const cgvBlocks = parseCgvHtml(fullCgvHtml)
+  const primaryColor = store.primaryColor || "#0066FF";
+  const styles = createContractStyles(primaryColor);
+  const cgvBlocks = parseCgvHtml(fullCgvHtml);
 
   // Create a currency formatter for this document
-  const formatCurrency = (amount: number | string) => formatCurrencyValue(amount, locale, currency)
+  const formatCurrency = (amount: number | string) => formatCurrencyValue(amount, locale, currency);
 
   // Date formatting helpers using store timezone
-  const formatFullDate = (date: Date) => formatStoreDate(date, timezone, 'FULL_DATE', locale)
-  const formatTime = (date: Date) => formatStoreDate(date, timezone, 'TIME_ONLY', locale)
-  const formatDateTimePrecise = (date: Date) => formatStoreDate(date, timezone, 'PRECISE_DATETIME', locale)
-  const formatShortDate = (date: Date) => formatStoreDate(date, timezone, 'SHORT_DATE', locale)
-  const formatDateOnly = (date: Date) => formatStoreDate(date, timezone, 'MEDIUM_DATE', locale)
+  const formatFullDate = (date: Date) => formatStoreDate(date, timezone, "FULL_DATE", locale);
+  const formatTime = (date: Date) => formatStoreDate(date, timezone, "TIME_ONLY", locale);
+  const formatDateTimePrecise = (date: Date) =>
+    formatStoreDate(date, timezone, "PRECISE_DATETIME", locale);
+  const formatShortDate = (date: Date) => formatStoreDate(date, timezone, "SHORT_DATE", locale);
+  const formatDateOnly = (date: Date) => formatStoreDate(date, timezone, "MEDIUM_DATE", locale);
 
   return (
     <Document>
@@ -279,14 +281,12 @@ export function ContractDocument({
             </View>
             <View style={styles.documentInfo}>
               <Text style={styles.documentNumber}>
-                {t.documentNumber.replace('{number}', doc.number)}
+                {t.documentNumber.replace("{number}", doc.number)}
               </Text>
               <Text style={styles.documentDate}>
-                {t.reservationNumber.replace('{number}', reservation.number)}
+                {t.reservationNumber.replace("{number}", reservation.number)}
               </Text>
-              <Text style={styles.documentDate}>
-                {capitalize(formatDateOnly(doc.generatedAt))}
-              </Text>
+              <Text style={styles.documentDate}>{capitalize(formatDateOnly(doc.generatedAt))}</Text>
             </View>
           </View>
         </View>
@@ -321,12 +321,12 @@ export function ContractDocument({
           {/* Customer */}
           <View style={styles.partyCard}>
             <Text style={styles.partyLabel}>{t.parties.customer}</Text>
-            {reservation.customer.customerType === 'business' &&
+            {reservation.customer.customerType === "business" &&
             reservation.customer.companyName ? (
               <>
                 <Text style={styles.partyName}>{reservation.customer.companyName}</Text>
                 <Text style={styles.partyInfo}>
-                  {t.parties.contact}: {reservation.customer.firstName}{' '}
+                  {t.parties.contact}: {reservation.customer.firstName}{" "}
                   {reservation.customer.lastName}
                 </Text>
               </>
@@ -363,7 +363,7 @@ export function ContractDocument({
                 <Text style={styles.periodTime}>
                   {t.period.at} {formatTime(reservation.startDate)}
                 </Text>
-                {reservation.outboundMethod === 'address' && reservation.deliveryAddress ? (
+                {reservation.outboundMethod === "address" && reservation.deliveryAddress ? (
                   <Text style={styles.periodDeliveryInfo}>
                     {t.period.delivery} : {reservation.deliveryAddress}
                     {reservation.deliveryCity && `, ${reservation.deliveryCity}`}
@@ -372,7 +372,7 @@ export function ContractDocument({
                 ) : (
                   <Text style={styles.periodDeliveryInfo}>
                     {reservation.pickupLocationSnapshot
-                      ? `${reservation.pickupLocationSnapshot.name} : ${reservation.pickupLocationSnapshot.address ?? ''}`
+                      ? `${reservation.pickupLocationSnapshot.name} : ${reservation.pickupLocationSnapshot.address ?? ""}`
                       : t.period.pickup}
                   </Text>
                 )}
@@ -387,7 +387,7 @@ export function ContractDocument({
                 <Text style={styles.periodTime}>
                   {t.period.at} {formatTime(reservation.endDate)}
                 </Text>
-                {reservation.returnMethod === 'address' && reservation.returnAddress ? (
+                {reservation.returnMethod === "address" && reservation.returnAddress ? (
                   <Text style={styles.periodDeliveryInfo}>
                     {t.period.delivery} : {reservation.returnAddress}
                     {reservation.returnCity && `, ${reservation.returnCity}`}
@@ -396,9 +396,9 @@ export function ContractDocument({
                 ) : (
                   <Text style={styles.periodDeliveryInfo}>
                     {reservation.returnLocationSnapshot
-                      ? `${reservation.returnLocationSnapshot.name} : ${reservation.returnLocationSnapshot.address ?? ''}`
+                      ? `${reservation.returnLocationSnapshot.name} : ${reservation.returnLocationSnapshot.address ?? ""}`
                       : reservation.pickupLocationSnapshot
-                        ? `${reservation.pickupLocationSnapshot.name} : ${reservation.pickupLocationSnapshot.address ?? ''}`
+                        ? `${reservation.pickupLocationSnapshot.name} : ${reservation.pickupLocationSnapshot.address ?? ""}`
                         : t.period.pickup}
                   </Text>
                 )}
@@ -436,10 +436,10 @@ export function ContractDocument({
                     <Text style={styles.unitIdentifiers}>
                       {t.table.unitIdentifiers
                         ? t.table.unitIdentifiers.replace(
-                            '{identifiers}',
-                            item.assignedUnitIdentifiers.join(', ')
+                            "{identifiers}",
+                            item.assignedUnitIdentifiers.join(", "),
                           )
-                        : `Identifiers: ${item.assignedUnitIdentifiers.join(', ')}`}
+                        : `Identifiers: ${item.assignedUnitIdentifiers.join(", ")}`}
                     </Text>
                   )}
                 </View>
@@ -467,7 +467,7 @@ export function ContractDocument({
               {reservation.taxAmount && parseFloat(reservation.taxAmount) > 0 && (
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>
-                    {t.totals.tax.replace('{rate}', reservation.taxRate || '0')}
+                    {t.totals.tax.replace("{rate}", reservation.taxRate || "0")}
                   </Text>
                   <Text style={styles.totalValue}>{formatCurrency(reservation.taxAmount)}</Text>
                 </View>
@@ -524,22 +524,22 @@ export function ContractDocument({
                   <Text
                     style={[
                       styles.paymentStatus,
-                      payment.status === 'completed'
+                      payment.status === "completed"
                         ? styles.paymentStatusCompleted
                         : styles.paymentStatusPending,
                     ]}
                   >
-                    {payment.status === 'completed'
+                    {payment.status === "completed"
                       ? t.paymentStatus.completed
                       : t.paymentStatus.pending}
                   </Text>
                   <Text
                     style={[
                       styles.paymentAmount,
-                      payment.status !== 'completed' ? styles.paymentAmountPending : {},
+                      payment.status !== "completed" ? styles.paymentAmountPending : {},
                     ]}
                   >
-                    {payment.type === 'deposit_return' ? '-' : ''}
+                    {payment.type === "deposit_return" ? "-" : ""}
                     {formatCurrency(payment.amount)}
                   </Text>
                 </View>
@@ -568,8 +568,8 @@ export function ContractDocument({
               <View style={styles.conditionBullet} />
               <Text style={styles.conditionText}>
                 {t.conditions.termsLink
-                  .replace('{slug}', store.slug)
-                  .replace('{domain}', env.NEXT_PUBLIC_APP_DOMAIN)}
+                  .replace("{slug}", store.slug)
+                  .replace("{domain}", env.NEXT_PUBLIC_APP_DOMAIN)}
               </Text>
             </View>
           </View>
@@ -589,28 +589,37 @@ export function ContractDocument({
                 <Text style={styles.signatureText}>{t.signature.landlordText}</Text>
                 <View style={styles.signatureDateRow}>
                   <Text style={styles.signatureDateLabel}>{t.signature.dateLabel}</Text>
-                  <Text style={styles.signatureDate}>
-                    {formatDateTimePrecise(doc.generatedAt)}
-                  </Text>
+                  <Text style={styles.signatureDate}>{formatDateTimePrecise(doc.generatedAt)}</Text>
                 </View>
               </View>
             </View>
 
-            {/* Customer Signature */}
+            {/* Customer Signature — only an actual signature (signedAt) may
+                render as signed; an unsigned contract must say so. */}
             <View style={styles.signatureBox}>
               <View style={styles.signatureHeader}>
                 <Text style={styles.signatureTitle}>{t.parties.customer}</Text>
-                <Text style={styles.signatureStatusText}>{t.signature.signed}</Text>
+                <Text
+                  style={
+                    reservation.signedAt
+                      ? styles.signatureStatusText
+                      : styles.signatureStatusPendingText
+                  }
+                >
+                  {reservation.signedAt ? t.signature.signed : t.signature.pending}
+                </Text>
               </View>
               <View style={styles.signatureContent}>
                 <Text style={styles.signatureText}>{t.signature.customerText}</Text>
-                <View style={styles.signatureDateRow}>
-                  <Text style={styles.signatureDateLabel}>{t.signature.dateLabel}</Text>
-                  <Text style={styles.signatureDate}>
-                    {formatDateTimePrecise(reservation.signedAt || reservation.createdAt)}
-                  </Text>
-                </View>
-                {reservation.signatureIp && (
+                {reservation.signedAt && (
+                  <View style={styles.signatureDateRow}>
+                    <Text style={styles.signatureDateLabel}>{t.signature.dateLabel}</Text>
+                    <Text style={styles.signatureDate}>
+                      {formatDateTimePrecise(reservation.signedAt)}
+                    </Text>
+                  </View>
+                )}
+                {reservation.signedAt && reservation.signatureIp && (
                   <Text style={styles.signatureIp}>
                     {t.signature.ipLabel} {reservation.signatureIp}
                   </Text>
@@ -627,9 +636,9 @@ export function ContractDocument({
           <Text style={styles.legalText}>{t.legal.text2}</Text>
           {store.siret && (
             <Text style={styles.legalText}>
-              {t.legal.companyInfo.replace('{name}', store.name).replace('{siret}', store.siret)}
+              {t.legal.companyInfo.replace("{name}", store.name).replace("{siret}", store.siret)}
               {store.tvaNumber
-                ? ` - ${t.legal.tvaApplicable.replace('{tva}', store.tvaNumber)}`
+                ? ` - ${t.legal.tvaApplicable.replace("{tva}", store.tvaNumber)}`
                 : ` - ${t.legal.tvaNotApplicable}`}
             </Text>
           )}
@@ -639,41 +648,41 @@ export function ContractDocument({
           <View break style={styles.cgvAnnexSection}>
             <Text style={styles.cgvAnnexTitle}>{t.sections.fullCgvAnnex}</Text>
             {cgvBlocks.map((block, index) => {
-              if (block.type === 'heading') {
+              if (block.type === "heading") {
                 const headingStyle =
                   block.level === 1
                     ? styles.cgvAnnexHeading1
                     : block.level === 2
                       ? styles.cgvAnnexHeading2
-                      : styles.cgvAnnexHeading3
+                      : styles.cgvAnnexHeading3;
 
                 return (
                   <Text key={`heading-${index}`} style={headingStyle}>
                     {block.text}
                   </Text>
-                )
+                );
               }
 
-              if (block.type === 'list') {
+              if (block.type === "list") {
                 return (
                   <View key={`list-${index}`} style={styles.cgvAnnexList}>
                     {block.items.map((item, itemIndex) => (
                       <View key={`list-item-${index}-${itemIndex}`} style={styles.cgvAnnexListItem}>
                         <Text style={styles.cgvAnnexListMarker}>
-                          {block.ordered ? `${itemIndex + 1}.` : '•'}
+                          {block.ordered ? `${itemIndex + 1}.` : "•"}
                         </Text>
                         <Text style={styles.cgvAnnexListText}>{item}</Text>
                       </View>
                     ))}
                   </View>
-                )
+                );
               }
 
               return (
                 <Text key={`paragraph-${index}`} style={styles.cgvAnnexParagraph}>
                   {block.text}
                 </Text>
-              )
+              );
             })}
           </View>
         )}
@@ -682,11 +691,11 @@ export function ContractDocument({
         <View style={styles.footer} fixed>
           <View style={styles.footerContent}>
             <Text style={styles.footerLeft}>
-              {store.name} {store.address ? `• ${store.address}` : ''}
+              {store.name} {store.address ? `• ${store.address}` : ""}
             </Text>
             <Text style={styles.footerCenter}>{t.footer.poweredBy}</Text>
             <Text style={styles.footerRight}>
-              {t.footer.generatedOn.replace('{date}', formatDateOnly(doc.generatedAt))}
+              {t.footer.generatedOn.replace("{date}", formatDateOnly(doc.generatedAt))}
             </Text>
           </View>
         </View>
@@ -695,11 +704,11 @@ export function ContractDocument({
         <Text
           style={styles.pageNumber}
           render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) =>
-            totalPages > 1 ? `Page ${pageNumber}/${totalPages}` : ''
+            totalPages > 1 ? `Page ${pageNumber}/${totalPages}` : ""
           }
           fixed
         />
       </Page>
     </Document>
-  )
+  );
 }

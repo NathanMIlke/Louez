@@ -160,6 +160,8 @@
     "or": "ou",
     "loginTitle": "Bienvenue sur louez",
     "loginDescription": "Entrez votre email pour continuer. Si vous n'avez pas de compte, il sera créé automatiquement.",
+    "reeentLoginTitle": "Bienvenue sur louez × <reeent>reeent</reeent>",
+    "reeentLoginDescription": "reeent est la vitrine, louez est votre outil : réservations, paiements et calendrier se gèrent ici. Si vous n'avez pas de compte, il sera créé automatiquement.",
     "linkWillBeSent": "Un lien sécurisé vous sera envoyé par email. Pas de mot de passe à retenir.",
     "checkEmail": "Vérifiez votre boîte mail",
     "emailSentTo": "Un lien de connexion a été envoyé à",
@@ -416,6 +418,9 @@
       "manage": "Gestion",
       "dashboard": "Dashboard",
       "viewStore": "Voir la boutique",
+      "viewOnReeent": "Voir ma page reeent",
+      "openStorefront": "Mon site",
+      "openReeentListing": "Ma page reeent",
       "newReservation": "Nouvelle réservation",
       "reservationLimitReached": "Limite atteinte",
       "help": "Aide",
@@ -762,6 +767,13 @@
         "description": "Vos clients attendent votre réponse",
         "action": "Traiter"
       },
+      "reeentStripe": {
+        "title": "Votre boutique n'est pas encore visible sur <reeent>reeent</reeent>",
+        "description": "Tant que les paiements en ligne ne sont pas activés, reeent ne publie pas votre boutique. L'offre de lancement (0 € de commission reeent à vie) s'applique dès la publication, tant qu'il reste des places.",
+        "continueSetup": "Continuer la configuration Stripe",
+        "activate": "Activer les paiements en ligne",
+        "paymentSettings": "Paramètres de paiement"
+      },
       "setup": {
         "title": "Mise en route",
         "description": "Quelques étapes pour bien démarrer",
@@ -777,6 +789,7 @@
         "descriptions": {
           "addFirstProduct": "Ajoutez votre premier produit pour que vos clients puissent réserver.",
           "connectStripe": "Connectez Stripe pour accepter les paiements par carte lors de la réservation.",
+          "connectStripeReeent": "Tant que Stripe n'est pas activé, votre boutique n'est pas visible sur reeent. Connectez Stripe pour être publié et accepter les paiements par carte.",
           "firstReservation": "Partagez votre boutique avec vos clients ou créez une réservation manuellement.",
           "firstCompleted": "Une fois la location rendue, marquez la réservation comme terminée."
         },
@@ -1865,6 +1878,7 @@
       "source": "Source",
       "sourceOnline": "En ligne",
       "sourceManual": "Manuel",
+      "sourceMarketplace": "Place de marché",
       "internalNotes": "Notes internes",
       "internalNotesPlaceholder": "Ajoutez des notes sur cette réservation...",
       "internalNotesHelp": "Ces notes ne sont pas visibles par le client",
@@ -5352,6 +5366,128 @@
           "communication": "Communication",
           "accountData": "Compte et données"
         }
+      },
+      "salesChannels": {
+        "title": "Canaux de vente",
+        "description": "Choisissez où vos produits sont proposés à la location.",
+        "channels": {
+          "heading": "Où souhaitez-vous recevoir des réservations ?",
+          "subheading": "Activez autant de canaux que vous le souhaitez : ils partagent le même catalogue, les mêmes stocks et le même moteur de réservation.",
+          "marketplace": {
+            "name": "Marketplace Louez",
+            "description": "Vos produits apparaissent dans la recherche publique de la marketplace, avec réservation directe.",
+            "recommended": "Recommandé",
+            "enableLabel": "Activer le canal marketplace",
+            "benefits": {
+              "visibility": "De nouveaux clients issus de la recherche de la marketplace.",
+              "seo": "Une page dédiée à votre établissement, référencée sur les moteurs de recherche.",
+              "free": "Gratuit au lancement, sans commission sur vos réservations."
+            }
+          },
+          "storefront": {
+            "name": "Ma boutique en ligne",
+            "description": "Votre site de réservation, disponible dès que votre boutique est publiable.",
+            "alwaysOn": "Toujours active",
+            "note": "Ce canal ne se désactive pas : c'est lui qui traite les réservations, y compris celles venues de la marketplace.",
+            "viewAction": "Voir ma boutique",
+            "customizeAction": "Personnaliser l'apparence"
+          }
+        },
+        "status": {
+          "label": "Statut",
+          "values": {
+            "setup_required": "Configuration requise",
+            "pending": "En attente de publication",
+            "published": "Publié",
+            "paused": "En pause",
+            "disabled": "Désactivé"
+          },
+          "publishedAt": "Publié le {date}",
+          "reason": {
+            "disabledByOwner": "Vous avez désactivé ce canal.",
+            "missing": "Des points de la checklist restent à compléter."
+          }
+        },
+        "checklist": {
+          "title": "Checklist de publication",
+          "description": "Votre boutique est publiée sur la marketplace dès que tous ces points sont validés.",
+          "progress": "{done} sur {total} validés",
+          "completeDescription": "Tout est prêt : votre boutique part à la prochaine synchronisation.",
+          "fixAction": "Compléter",
+          "doneLabel": "Validé",
+          "items": {
+            "addressAndGeolocation": {
+              "label": "Adresse et géolocalisation",
+              "description": "Une adresse complète et ses coordonnées permettent de vous placer sur la carte."
+            },
+            "activeProductWithImageAndPrice": {
+              "label": "Au moins un produit actif",
+              "description": "Un produit actif avec au moins une photo et un prix."
+            },
+            "stripeChargesEnabled": {
+              "label": "Paiements Stripe opérationnels",
+              "description": "Votre compte Stripe accepte les paiements en ligne."
+            },
+            "cgvPresent": {
+              "label": "Conditions de location",
+              "description": "Vos conditions générales de location sont renseignées."
+            },
+            "marketplaceTermsAccepted": {
+              "label": "Conditions de la marketplace acceptées",
+              "description": "La marketplace est gratuite au lancement. Les conditions réservent la possibilité d'introduire plus tard une commission sur les réservations issues de la marketplace.",
+              "acceptedAt": "Accepté le {date}"
+            }
+          }
+        },
+        "claim": {
+          "title": "Votre établissement est peut-être déjà sur la marketplace",
+          "description": "Confirmez uniquement si vous reconnaissez votre établissement. Aucun rapprochement n'est effectué automatiquement.",
+          "confirmAction": "C'est mon établissement",
+          "noneAction": "Aucun de ces établissements",
+          "linkedTitle": "Établissement de l'annuaire lié",
+          "linkedDescription": "La marketplace conservera la fiche existante et son URL lors de la publication.",
+          "linkedFallback": "Établissement lié",
+          "mergeHint": "Cette fiche sera fusionnée avec votre boutique à la publication.",
+          "unlinkAction": "Annuler le lien",
+          "distanceMeters": "{distance} m",
+          "distanceKilometers": "{distance} km",
+          "confirmedToast": "Établissement lié à votre boutique.",
+          "dismissedToast": "Aucun rapprochement sélectionné.",
+          "unlinkedToast": "Lien avec l'établissement annulé."
+        },
+        "mapping": {
+          "title": "Correspondance des catégories",
+          "description": "Associez chacune de vos catégories à une catégorie de la marketplace pour que vos produits ressortent dans les bonnes recherches.",
+          "none": "Aucune correspondance",
+          "fallbackHint": "Le catalogue de la marketplace est indisponible. Saisissez directement l'identifiant de la catégorie, en minuscules et tirets.",
+          "fallbackPlaceholder": "velo-vtt-electrique",
+          "invalidSlug": "Identifiant invalide : minuscules, chiffres et tirets uniquement.",
+          "empty": "Vous n'avez pas encore créé de catégorie.",
+          "emptyAction": "Créer une catégorie",
+          "saved": "Correspondances enregistrées."
+        },
+        "disable": {
+          "title": "Désactiver la marketplace ?",
+          "description": "Vos produits ne seront plus proposés sur la marketplace. Vous pourrez réactiver le canal à tout moment.",
+          "consequences": {
+            "search": "Vos produits disparaissent rapidement de la recherche de la marketplace.",
+            "redirect": "Les pages produit déjà indexées redirigent vers la fiche de votre établissement.",
+            "links": "Votre fiche reste en ligne dans l'annuaire et vos liens existants continuent de fonctionner."
+          },
+          "confirm": "Désactiver",
+          "cancel": "Annuler"
+        },
+        "toasts": {
+          "enabled": "Canal marketplace activé.",
+          "disabled": "Canal marketplace désactivé.",
+          "termsAccepted": "Conditions de la marketplace acceptées."
+        },
+        "cohort": {
+          "memberTitle": "Offre reeent à vie — 0 € de commission reeent",
+          "memberRank": "Membre n°{rank} de la cohorte de lancement",
+          "incentiveBadge": "Offre de lancement",
+          "incentiveLine": "encore {remaining} places avec 0 € de commission reeent à vie"
+        }
       }
     },
     "commandPalette": {
@@ -6490,6 +6626,9 @@
         "confirmDecline": "Refuser le devis"
       }
     },
+    "marketplaceShell": {
+      "marketplaceName": "Louez Marketplace"
+    },
     "footer": {
       "description": "Location de matériel simple et efficace.",
       "contact": "Contact",
@@ -6612,7 +6751,8 @@
         "upTo20": "6 à 20",
         "upTo50": "21 à 50",
         "moreThan50": "Plus de 50"
-      }
+      },
+      "individualNote": "Pas besoin d'entreprise pour commencer : créez votre page, publiez vos objets et encaissez en ligne. Les revenus de location sont à déclarer selon votre situation."
     },
     "store": {
       "title": "Informations de votre boutique",
@@ -6688,6 +6828,17 @@
       "requestModeDescription": "Les clients envoient une demande. Vous validez et encaissez vous-même (espèces, virement, CB sur place).",
       "requestModeNote": "Vous gérez la validation et le paiement de chaque réservation. Vous pourrez passer au paiement en ligne à tout moment depuis les paramètres.",
       "configComplete": "Configuration terminée !",
+      "reeent": {
+        "title": "Activez le paiement en ligne",
+        "description": "Sur reeent, vos clients réservent et paient en ligne. C'est ce qui rend votre boutique « Réservable en ligne » et la fait remonter dans les résultats.",
+        "whyTitle": "Pourquoi c'est nécessaire",
+        "panelWhyTitle": "Pourquoi Stripe sur reeent ?",
+        "why1": "Le paiement va directement du client à votre compte bancaire, via Stripe. Ni reeent ni Louez ne touchent l'argent.",
+        "why2": "C'est ce qui permet la réservation instantanée, sans relance ni impayé de votre côté.",
+        "withoutStripe": "Sans compte Stripe actif, votre boutique Louez fonctionne (réservations en validation manuelle), mais elle n'apparaîtra sur reeent qu'une fois Stripe activé.",
+        "later": "Plus tard",
+        "laterNote": "Vous pourrez l'activer depuis votre dashboard. Votre boutique sera publiée sur reeent automatiquement dès que Stripe sera actif ; en attendant, vos réservations Louez passent en validation manuelle."
+      },
       "panel": {
         "payment": {
           "benefitsTitle": "Pourquoi le paiement en ligne ?",
@@ -6759,7 +6910,45 @@
       "product": "Premier produit",
       "payment": "Paiements",
       "profile": "Profil",
-      "source": "Source"
+      "source": "Source",
+      "reeent": "reeent"
+    },
+    "reeent": {
+      "title": "Vous arrivez de <reeent>reeent</reeent>",
+      "description": "Une question avant de créer votre boutique.",
+      "introDescription": "Trois points, puis une question.",
+      "status": {
+        "label": "Vous louez",
+        "professional": "En professionnel",
+        "professionalHint": "Vous avez une entreprise, une association ou une activité déclarée.",
+        "individual": "En particulier",
+        "individualHint": "Vous louez vos propres objets, sans entreprise.",
+        "hint": "Votre statut est affiché sur reeent et adapte la suite."
+      },
+      "panel": {
+        "title": "Ce qu'il faut savoir",
+        "products": {
+          "title": "Deux produits, un compte",
+          "body": "reeent est la vitrine : vos clients y trouvent votre matériel. Louez est votre outil : réservations, paiements et calendrier se gèrent ici.",
+          "individualBody": "Pas besoin d'entreprise. reeent est la vitrine, Louez est votre outil : publiez vos objets, gérez vos réservations et encaissez en ligne."
+        },
+        "offer": {
+          "title": "Offre de lancement",
+          "body": "Les {total} premiers loueurs publiés sur reeent gardent 0 € de commission reeent, pour toujours.",
+          "remaining": "Il reste {remaining} places sur {total}.",
+          "closedBody": "L'offre de lancement est complète. Publier sur reeent reste le moyen le plus simple de vous rendre visible."
+        },
+        "pricing": {
+          "title": "Ce que coûte Louez",
+          "amount": "1 €",
+          "amountUnit": "par réservation",
+          "amountDetail": "Dégressif au volume.",
+          "quietMonth": "Un mois sans location : rien à payer.",
+          "subscription": "Un abonnement mensuel si vous louez beaucoup.",
+          "switch": "On change de formule quand on veut.",
+          "individualNote": "Vos revenus de location sont à déclarer selon votre situation ; si l'activité devient professionnelle, nous vous demanderons de changer de statut."
+        }
+      }
     }
   },
   "categories": {
@@ -6859,6 +7048,7 @@
     "signature": {
       "validated": "Validé",
       "signed": "Signé",
+      "pending": "En attente de signature",
       "landlordText": "Le loueur certifie l'exactitude des informations ci-dessus et la disponibilité du matériel pour la période indiquée.",
       "customerText": "Je reconnais avoir pris connaissance des conditions générales de location et les accepte sans réserve.",
       "dateLabel": "Date :",
@@ -7159,7 +7349,8 @@
     "standaloneSingleStore": "Cette instance héberge une seule boutique",
     "emailLoginUnavailable": "La connexion par e-mail n'est pas disponible pour le moment",
     "stripeNotConfigured": "Les paiements en ligne ne sont pas disponibles : aucune clé Stripe n'est configurée sur cette instance. Les réservations fonctionnent en mode demande.",
-    "emailSendFailed": "Échec de l'envoi de l'e-mail."
+    "emailSendFailed": "Échec de l'envoi de l'e-mail.",
+    "marketplaceChannelNotFound": "Canal marketplace introuvable"
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

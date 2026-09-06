@@ -1,61 +1,60 @@
-import { headers } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { headers } from "next/headers";
+import { NextResponse } from "next/server";
 
-import { and, eq, isNull } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
-import type Stripe from 'stripe';
+import { and, eq, isNull } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import type Stripe from "stripe";
 
-import { ConsumableStockError, consumeReservationStock, db } from '@louez/db';
 import {
-  paymentRequests,
-  payments,
-  reservationActivity,
-  reservations,
-  stores,
-} from '@louez/db';
-import type { NotificationSettings, StoreSettings } from '@louez/types';
+  confirmMarketplaceBookingAttempt,
+  failMarketplaceBookingAttempt,
+} from "@louez/api/services";
+import { ConsumableStockError, consumeReservationStock, db } from "@louez/db";
+import { paymentRequests, payments, reservationActivity, reservations, stores } from "@louez/db";
+import type { NotificationSettings, StoreSettings } from "@louez/types";
 
 import {
   notifyPaymentFailed,
   notifyPaymentReceived,
   notifyReservationConfirmed,
   notifyStripeConnected,
-} from '@/lib/discord/platform-notifications';
-import { log } from '@/lib/evlog';
-import { markReservationForCalendarSync } from '@/lib/integrations/calendar/sync';
-import { tryPrepareInitialInvoiceEmailDelivery } from '@/lib/invoicing/delivery';
+} from "@/lib/discord/platform-notifications";
+import { log } from "@/lib/evlog";
+import { markReservationForCalendarSync } from "@/lib/integrations/calendar/sync";
+import { tryPrepareInitialInvoiceEmailDelivery } from "@/lib/invoicing/delivery";
 import {
   tryEnsureRefundPaymentRecord,
   tryGenerateCreditNoteForRefund,
   tryGenerateInvoiceForPayment,
-} from '@/lib/invoicing/service';
-import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
-import { dispatchNotification } from '@/lib/notifications/dispatcher';
+} from "@/lib/invoicing/service";
+import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
+import { dispatchNotification } from "@/lib/notifications/dispatcher";
 import {
   distributeReversal,
   getReversibleFees,
   getStoreBilling,
   parseFeeMetadata,
+  recordMarketplaceFee,
   recordFeeReversals,
   recordReservationFee,
-} from '@/lib/pay-as-you-go';
+} from "@/lib/pay-as-you-go";
 import {
   captureProductServerEvent,
   toAnalyticsAmountCents,
-} from '@/lib/product-analytics/analytics';
-import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
-import { getReferralProgramConfig } from '@/lib/referral/defaults';
+} from "@/lib/product-analytics/analytics";
+import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import { getReferralProgramConfig } from "@/lib/referral/defaults";
 import {
   clawbackReferrerRewardForQualifyingPayment,
   maybeGrantReferrerReward,
-} from '@/lib/referral/rewards';
-import { fromStripeCents } from '@/lib/stripe';
-import { stripe } from '@/lib/stripe/client';
-import { claimCompletedCheckoutPayment } from '@/lib/stripe/payment-completion';
-import { evaluateReservationRules } from '@/lib/utils/reservation-rules';
+} from "@/lib/referral/rewards";
+import { fromStripeCents } from "@/lib/stripe";
+import { stripe } from "@/lib/stripe/client";
+import { claimCompletedCheckoutPayment } from "@/lib/stripe/payment-completion";
+import { evaluateReservationRules } from "@/lib/utils/reservation-rules";
 
-import { getStorefrontUrl } from '@/lib/storefront-url';
-import { env } from '@/env';
+import { getStorefrontUrl } from "@/lib/storefront-url";
+import { env } from "@/env";
 
 // ===== TYPE DEFINITIONS =====
 // Define explicit type for reservation with relations to ensure proper typing
@@ -87,6 +86,7 @@ type ReservationWithRelations = {
   storeId: string;
   customerId: string | null;
   status: string;
+  source: string | null;
   startDate: Date;
   endDate: Date;
   totalAmount: string;
@@ -103,14 +103,11 @@ type ReservationWithRelations = {
   }>;
 };
 
-async function queueReservationCalendarSync(
-  storeId: string,
-  reservationId: string,
-) {
+async function queueReservationCalendarSync(storeId: string, reservationId: string) {
   try {
     await markReservationForCalendarSync(storeId, reservationId);
   } catch (error) {
-    console.error('[calendar] Failed to enqueue reservation sync:', {
+    console.error("[calendar] Failed to enqueue reservation sync:", {
       storeId,
       reservationId,
       error,
@@ -123,7 +120,7 @@ async function confirmPaidReservation(params: {
   storeId: string;
   stripeCustomerId: string | null;
   stripePaymentMethodId: string | null;
-  depositStatus: 'none' | 'card_saved' | 'pending';
+  depositStatus: "none" | "card_saved" | "pending";
 }): Promise<boolean> {
   try {
     return await confirmPaidReservationOrThrow(params);
@@ -134,7 +131,7 @@ async function confirmPaidReservation(params: {
       // leave the reservation pending so the merchant restocks and confirms
       // manually from the dashboard.
       log.error(
-        'stripe-webhook',
+        "stripe-webhook",
         `Consumable stock insufficient while confirming reservation ${params.reservationId}: product ${error.productId}, requested ${error.requestedQuantity}, available ${error.availableQuantity}`,
       );
       return false;
@@ -148,7 +145,7 @@ async function confirmPaidReservationOrThrow(params: {
   storeId: string;
   stripeCustomerId: string | null;
   stripePaymentMethodId: string | null;
-  depositStatus: 'none' | 'card_saved' | 'pending';
+  depositStatus: "none" | "card_saved" | "pending";
 }): Promise<boolean> {
   // Keep payment/deposit metadata even when stock consumption rolls back. A
   // merchant can then restock and confirm the paid reservation manually.
@@ -164,7 +161,7 @@ async function confirmPaidReservationOrThrow(params: {
       and(
         eq(reservations.id, params.reservationId),
         eq(reservations.storeId, params.storeId),
-        eq(reservations.status, 'pending'),
+        eq(reservations.status, "pending"),
       ),
     );
 
@@ -173,23 +170,20 @@ async function confirmPaidReservationOrThrow(params: {
       .select({ status: reservations.status })
       .from(reservations)
       .where(
-        and(
-          eq(reservations.id, params.reservationId),
-          eq(reservations.storeId, params.storeId),
-        ),
+        and(eq(reservations.id, params.reservationId), eq(reservations.storeId, params.storeId)),
       )
-      .for('update');
+      .for("update");
 
     if (!lockedReservation) {
       return false;
     }
 
-    if (lockedReservation.status === 'confirmed') {
+    if (lockedReservation.status === "confirmed") {
       await consumeReservationStock(tx, params.reservationId, params.storeId);
       return false;
     }
 
-    if (lockedReservation.status !== 'pending') {
+    if (lockedReservation.status !== "pending") {
       return false;
     }
 
@@ -197,7 +191,7 @@ async function confirmPaidReservationOrThrow(params: {
     await tx
       .update(reservations)
       .set({
-        status: 'confirmed',
+        status: "confirmed",
         stripeCustomerId: params.stripeCustomerId,
         stripePaymentMethodId: params.stripePaymentMethodId,
         depositStatus: params.depositStatus,
@@ -207,7 +201,7 @@ async function confirmPaidReservationOrThrow(params: {
         and(
           eq(reservations.id, params.reservationId),
           eq(reservations.storeId, params.storeId),
-          eq(reservations.status, 'pending'),
+          eq(reservations.status, "pending"),
         ),
       );
 
@@ -222,10 +216,8 @@ async function confirmPaidReservationOrThrow(params: {
  * Validates that a reservationId from Stripe metadata is properly formatted
  * @returns true if valid, false otherwise
  */
-function isValidReservationId(
-  reservationId: string | undefined,
-): reservationId is string {
-  return typeof reservationId === 'string' && reservationId.length === 21;
+function isValidReservationId(reservationId: string | undefined): reservationId is string {
+  return typeof reservationId === "string" && reservationId.length === 21;
 }
 
 /**
@@ -252,18 +244,12 @@ async function validateConnectedAccountForReservation(
   }
 
   // If we have a connected account, validate it matches the store
-  if (
-    connectedAccountId &&
-    reservation.store.stripeAccountId !== connectedAccountId
-  ) {
-    console.error(
-      `[SECURITY] [${eventType}] Connected account mismatch - possible attack`,
-      {
-        expected: reservation.store.stripeAccountId,
-        received: connectedAccountId,
-        reservationId,
-      },
-    );
+  if (connectedAccountId && reservation.store.stripeAccountId !== connectedAccountId) {
+    console.error(`[SECURITY] [${eventType}] Connected account mismatch - possible attack`, {
+      expected: reservation.store.stripeAccountId,
+      received: connectedAccountId,
+      reservationId,
+    });
     return { valid: false };
   }
 
@@ -278,30 +264,23 @@ async function validateConnectedAccountForReservation(
 export async function POST(request: Request) {
   const body = await request.text();
   const headersList = await headers();
-  const signature = headersList.get('stripe-signature');
+  const signature = headersList.get("stripe-signature");
 
   if (!signature) {
-    return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
+    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
   if (!env.STRIPE_CONNECT_WEBHOOK_SECRET) {
-    return NextResponse.json(
-      { error: 'Stripe is not configured' },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "Stripe is not configured" }, { status: 503 });
   }
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      env.STRIPE_CONNECT_WEBHOOK_SECRET,
-    );
+    event = stripe.webhooks.constructEvent(body, signature, env.STRIPE_CONNECT_WEBHOOK_SECRET);
   } catch (err) {
-    console.error('Connect webhook signature verification failed:', err);
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+    console.error("Connect webhook signature verification failed:", err);
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
   // Get connected account ID from event
@@ -310,68 +289,54 @@ export async function POST(request: Request) {
   try {
     switch (event.type) {
       // Checkout events
-      case 'checkout.session.completed':
+      case "checkout.session.completed":
         await handleCheckoutCompleted(
           event.data.object as Stripe.Checkout.Session,
           connectedAccountId,
         );
         break;
 
-      case 'checkout.session.expired':
-        await handleCheckoutExpired(
-          event.data.object as Stripe.Checkout.Session,
-        );
+      case "checkout.session.expired":
+        await handleCheckoutExpired(event.data.object as Stripe.Checkout.Session);
         break;
 
       // Deposit authorization hold events
-      case 'payment_intent.amount_capturable_updated':
+      case "payment_intent.amount_capturable_updated":
         await handleDepositAuthorized(
           event.data.object as Stripe.PaymentIntent,
           connectedAccountId,
         );
         break;
 
-      case 'payment_intent.canceled':
-        await handleDepositReleased(
-          event.data.object as Stripe.PaymentIntent,
-          connectedAccountId,
-        );
+      case "payment_intent.canceled":
+        await handleDepositReleased(event.data.object as Stripe.PaymentIntent, connectedAccountId);
         break;
 
-      case 'payment_intent.succeeded':
-        await handleDepositCaptured(
-          event.data.object as Stripe.PaymentIntent,
-          connectedAccountId,
-        );
+      case "payment_intent.succeeded":
+        await handleDepositCaptured(event.data.object as Stripe.PaymentIntent, connectedAccountId);
         break;
 
-      case 'payment_intent.payment_failed':
-        await handleDepositFailed(
-          event.data.object as Stripe.PaymentIntent,
-          connectedAccountId,
-        );
+      case "payment_intent.payment_failed":
+        await handleDepositFailed(event.data.object as Stripe.PaymentIntent, connectedAccountId);
         break;
 
       // Refund events
-      case 'charge.refunded':
-        await handleChargeRefunded(
-          event.data.object as Stripe.Charge,
-          connectedAccountId,
-        );
+      case "charge.refunded":
+        await handleChargeRefunded(event.data.object as Stripe.Charge, connectedAccountId);
         break;
 
       // Dispute / chargeback — the funds are pulled back, so reverse the platform fees.
-      case 'charge.dispute.created':
+      case "charge.dispute.created":
         await handleChargeDisputeCreated(event.data.object as Stripe.Dispute);
         break;
 
       // Account events
-      case 'account.updated':
+      case "account.updated":
         await handleAccountUpdated(event.data.object as Stripe.Account);
         break;
 
       // A connected account disconnected from the platform — stop charging it.
-      case 'account.application.deauthorized':
+      case "account.application.deauthorized":
         await handleAccountDeauthorized(connectedAccountId);
         break;
 
@@ -382,10 +347,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error(`Connect webhook handler error for ${event.type}:`, error);
-    return NextResponse.json(
-      { error: 'Webhook handler failed' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
   }
 }
 
@@ -394,17 +356,17 @@ async function handleCheckoutCompleted(
   connectedAccountId?: string,
 ) {
   // Only handle payment mode (not subscription)
-  if (session.mode !== 'payment') return;
+  if (session.mode !== "payment") return;
 
   const reservationId = session.metadata?.reservationId;
   if (!reservationId) {
-    console.error('No reservationId in checkout session metadata');
+    console.error("No reservationId in checkout session metadata");
     return;
   }
 
   // SECURITY: Validate reservationId format (nanoid 21 chars)
   if (reservationId.length !== 21) {
-    console.error('[SECURITY] Invalid reservationId format in metadata', {
+    console.error("[SECURITY] Invalid reservationId format in metadata", {
       reservationId,
     });
     return;
@@ -435,24 +397,18 @@ async function handleCheckoutCompleted(
   }
 
   // Validate connected account matches store to prevent metadata manipulation
-  if (
-    connectedAccountId &&
-    reservation.store.stripeAccountId !== connectedAccountId
-  ) {
-    console.error(
-      '[SECURITY] Connected account mismatch - possible attack detected',
-      {
-        expected: reservation.store.stripeAccountId,
-        received: connectedAccountId,
-        reservationId,
-        sessionId: session.id,
-      },
-    );
+  if (connectedAccountId && reservation.store.stripeAccountId !== connectedAccountId) {
+    console.error("[SECURITY] Connected account mismatch - possible attack detected", {
+      expected: reservation.store.stripeAccountId,
+      received: connectedAccountId,
+      reservationId,
+      sessionId: session.id,
+    });
     return;
   }
 
   // If reservation is already confirmed (e.g., by success page), skip
-  if (reservation.status !== 'pending') {
+  if (reservation.status !== "pending") {
     console.log(
       `Reservation ${reservationId} already ${reservation.status}, updating payment only`,
     );
@@ -460,7 +416,7 @@ async function handleCheckoutCompleted(
 
   // Resolve the store's billing mode up front (reused for pay-as-you-go metering).
   const billing = await getStoreBilling(reservation.store.id);
-  const isPayAsYouGoStore = billing.billingMode === 'pay_as_you_go';
+  const isPayAsYouGoStore = billing.billingMode === "pay_as_you_go";
 
   // Even when the payment was already completed (e.g. by the success page) all stores
   // fall through to retrieve the PaymentIntent and record the platform fees skimmed at
@@ -478,6 +434,7 @@ async function handleCheckoutCompleted(
   let applicationFeeId: string | null = null;
   let feeBreakdown = {
     reservationFeeCents: 0,
+    marketplaceFeeCents: 0,
     hasBreakdown: false,
   };
   let paymentIntentRetrieveFailed = false;
@@ -486,7 +443,7 @@ async function handleCheckoutCompleted(
     try {
       const paymentIntent = await stripe.paymentIntents.retrieve(
         session.payment_intent as string,
-        { expand: ['latest_charge'] },
+        { expand: ["latest_charge"] },
         { stripeAccount: connectedAccountId },
       );
       paymentIntentId = paymentIntent.id;
@@ -496,15 +453,14 @@ async function handleCheckoutCompleted(
       feeBreakdown = parseFeeMetadata(paymentIntent.metadata);
 
       const latestCharge = paymentIntent.latest_charge;
-      if (latestCharge && typeof latestCharge === 'object') {
+      if (latestCharge && typeof latestCharge === "object") {
         chargeId = latestCharge.id;
-        applicationFeeId =
-          (latestCharge.application_fee as string | null) ?? null;
+        applicationFeeId = (latestCharge.application_fee as string | null) ?? null;
       } else {
         chargeId = (latestCharge as string | null) ?? null;
       }
     } catch (error) {
-      console.error('Failed to retrieve payment intent:', error);
+      console.error("Failed to retrieve payment intent:", error);
       paymentIntentRetrieveFailed = true;
     }
   }
@@ -524,16 +480,15 @@ async function handleCheckoutCompleted(
     stripeCustomerId = session.customer as string;
   }
 
-  const currency = session.currency?.toUpperCase() || 'EUR';
+  const currency = session.currency?.toUpperCase() || "EUR";
   const totalAmount = fromStripeCents(session.amount_total || 0, currency);
   const depositAmount = Number(reservation.depositAmount) || 0;
 
   // Determine deposit status based on whether there's a deposit and card was saved
-  let newDepositStatus: 'none' | 'card_saved' | 'pending' = 'none';
+  let newDepositStatus: "none" | "card_saved" | "pending" = "none";
   if (depositAmount > 0) {
     // If we have both customer and payment method, card is saved
-    newDepositStatus =
-      stripeCustomerId && stripePaymentMethodId ? 'card_saved' : 'pending';
+    newDepositStatus = stripeCustomerId && stripePaymentMethodId ? "card_saved" : "pending";
   }
 
   const paidAt = new Date();
@@ -552,7 +507,7 @@ async function handleCheckoutCompleted(
     if (!feeBreakdown.hasBreakdown && applicationFeeCollectedCents > 0) {
       reservationFeeCents = applicationFeeCollectedCents;
       console.warn(
-        '[payg] PaymentIntent missing fee-breakdown metadata; treating the whole application fee as the reservation commission',
+        "[payg] PaymentIntent missing fee-breakdown metadata; treating the whole application fee as the reservation commission",
         { reservationId, paymentIntentId, applicationFeeCollectedCents },
       );
     }
@@ -561,7 +516,7 @@ async function handleCheckoutCompleted(
     await recordReservationFee({
       storeId: reservation.store.id,
       reservationId,
-      source: collectedAtSource ? 'online' : 'manual',
+      source: collectedAtSource ? "online" : "manual",
       collectedAmountCents: reservationFeeCents,
       currency,
       paymentId: existingPayment?.id ?? null,
@@ -569,6 +524,21 @@ async function handleCheckoutCompleted(
       stripeApplicationFeeId: applicationFeeId,
       at: paidAt,
       billing,
+    });
+  }
+
+  if (paymentIntentId && reservation.source === "marketplace") {
+    const marketplaceCollectedAtSource = feeBreakdown.marketplaceFeeCents >= 100;
+    await recordMarketplaceFee({
+      storeId: reservation.store.id,
+      reservationId,
+      source: marketplaceCollectedAtSource ? "online" : "manual",
+      collectedAmountCents: feeBreakdown.marketplaceFeeCents,
+      currency,
+      paymentId: existingPayment?.id ?? null,
+      stripePaymentIntentId: paymentIntentId,
+      stripeApplicationFeeId: applicationFeeId,
+      at: paidAt,
     });
   }
 
@@ -597,7 +567,7 @@ async function handleCheckoutCompleted(
         at: paidAt,
       });
     } catch (error) {
-      console.error('[referral] failed to grant referrer reward', {
+      console.error("[referral] failed to grant referrer reward", {
         reservationId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -615,11 +585,13 @@ async function handleCheckoutCompleted(
     paidAt,
   });
 
+  if (reservation.source === "marketplace") {
+    await confirmMarketplaceBookingAttempt(reservationId);
+  }
+
   const invoiceGeneration = await tryGenerateInvoiceForPayment(
     paymentClaim.paymentId,
-    paymentClaim.claimed
-      ? 'stripe_checkout_webhook'
-      : 'stripe_checkout_webhook_existing_payment',
+    paymentClaim.claimed ? "stripe_checkout_webhook" : "stripe_checkout_webhook_existing_payment",
   );
 
   // Mark payment request as completed if this session was created from one
@@ -628,7 +600,7 @@ async function handleCheckoutCompleted(
     await db
       .update(paymentRequests)
       .set({
-        status: 'completed',
+        status: "completed",
         completedAt: paidAt,
       })
       .where(eq(paymentRequests.id, paymentRequestId));
@@ -639,7 +611,7 @@ async function handleCheckoutCompleted(
     await db.insert(reservationActivity).values({
       id: nanoid(),
       reservationId,
-      activityType: 'payment_received',
+      activityType: "payment_received",
       description: null,
       metadata: {
         paymentIntentId,
@@ -647,8 +619,8 @@ async function handleCheckoutCompleted(
         checkoutSessionId: session.id,
         amount: totalAmount,
         currency,
-        method: 'stripe',
-        type: 'rental',
+        method: "stripe",
+        type: "rental",
       },
       createdAt: paidAt,
     });
@@ -659,13 +631,13 @@ async function handleCheckoutCompleted(
       distinctId: reservation.customerId,
       event: productAnalyticsEvents.checkoutPaymentCompleted,
       properties: {
-        feature: 'checkout',
-        surface: 'storefront',
+        feature: "checkout",
+        surface: "storefront",
         store_id: reservation.store.id,
         reservation_id: reservationId,
         customer_id: reservation.customerId,
-        source: 'stripe_connect_webhook',
-        payment_provider: 'stripe',
+        source: "stripe_connect_webhook",
+        payment_provider: "stripe",
         amount_cents: toAnalyticsAmountCents(totalAmount),
         deposit_amount_cents: toAnalyticsAmountCents(depositAmount),
         currency,
@@ -674,7 +646,7 @@ async function handleCheckoutCompleted(
         payment_intent_present: Boolean(paymentIntentId),
         payment_request_present: Boolean(paymentRequestId),
         reservation_status_before: reservation.status,
-        reservation_confirmed_by_event: reservation.status === 'pending',
+        reservation_confirmed_by_event: reservation.status === "pending",
         is_pay_as_you_go_store: isPayAsYouGoStore,
         application_fee_collected_cents: applicationFeeCollectedCents,
         reservation_fee_cents: feeBreakdown.reservationFeeCents,
@@ -684,7 +656,7 @@ async function handleCheckoutCompleted(
 
   // Dispatch admin notifications (SMS, Discord) for payment received.
   if (paymentClaim.claimed) {
-    dispatchNotification('payment_received', {
+    dispatchNotification("payment_received", {
       store: {
         id: reservation.store.id,
         name: reservation.store.name,
@@ -713,7 +685,7 @@ async function handleCheckoutCompleted(
         amount: totalAmount,
       },
     }).catch((error) => {
-      console.error('Failed to dispatch payment received notification:', error);
+      console.error("Failed to dispatch payment received notification:", error);
     });
 
     notifyPaymentReceived(
@@ -746,7 +718,7 @@ async function handleCheckoutCompleted(
 
     if (validationWarnings.length > 0) {
       console.warn(
-        '[reservation-confirmation-warning] Stripe webhook confirmed reservation with rule violations',
+        "[reservation-confirmation-warning] Stripe webhook confirmed reservation with rule violations",
         {
           reservationId,
           storeId: reservation.store.id,
@@ -759,9 +731,9 @@ async function handleCheckoutCompleted(
     await db.insert(reservationActivity).values({
       id: nanoid(),
       reservationId,
-      activityType: 'confirmed',
+      activityType: "confirmed",
       metadata: {
-        source: 'online_payment',
+        source: "online_payment",
         depositAmount,
         depositStatus: newDepositStatus,
         cardSaved: !!stripePaymentMethodId,
@@ -774,7 +746,7 @@ async function handleCheckoutCompleted(
     });
 
     // Also dispatch confirmation notification
-    dispatchNotification('reservation_confirmed', {
+    dispatchNotification("reservation_confirmed", {
       store: {
         id: reservation.store.id,
         name: reservation.store.name,
@@ -800,14 +772,13 @@ async function handleCheckoutCompleted(
           }
         : undefined,
     }).catch((error) => {
-      console.error('Failed to dispatch confirmation notification:', error);
+      console.error("Failed to dispatch confirmation notification:", error);
     });
 
     // Dispatch customer notification for reservation confirmed (email/SMS based on store preferences)
     if (reservation.customer) {
       const invoiceDelivery =
-        invoiceGeneration.status === 'generated' &&
-        invoiceGeneration.kind === 'initial'
+        invoiceGeneration.status === "generated" && invoiceGeneration.kind === "initial"
           ? await tryPrepareInitialInvoiceEmailDelivery(reservationId)
           : undefined;
       const reservationUrl = getStorefrontUrl(
@@ -817,13 +788,13 @@ async function handleCheckoutCompleted(
 
       const emailItems =
         reservation.items?.map((item) => ({
-          name: item.productSnapshot?.name || 'Product',
+          name: item.productSnapshot?.name || "Product",
           quantity: item.quantity,
           unitPrice: Number(item.unitPrice),
           totalPrice: Number(item.totalPrice),
         })) || [];
 
-      dispatchCustomerNotification('customer_reservation_confirmed', {
+      dispatchCustomerNotification("customer_reservation_confirmed", {
         store: {
           id: reservation.store.id,
           name: reservation.store.name,
@@ -834,8 +805,7 @@ async function handleCheckoutCompleted(
           theme: reservation.store.theme,
           settings: reservation.store.settings,
           emailSettings: reservation.store.emailSettings,
-          customerNotificationSettings:
-            reservation.store.customerNotificationSettings,
+          customerNotificationSettings: reservation.store.customerNotificationSettings,
         },
         customer: {
           id: reservation.customer.id,
@@ -854,22 +824,15 @@ async function handleCheckoutCompleted(
           depositAmount: Number(reservation.depositAmount),
           taxEnabled: !!reservation.taxRate,
           taxRate: reservation.taxRate ? Number(reservation.taxRate) : null,
-          subtotalExclTax: reservation.subtotalExclTax
-            ? Number(reservation.subtotalExclTax)
-            : null,
-          taxAmount: reservation.taxAmount
-            ? Number(reservation.taxAmount)
-            : null,
+          subtotalExclTax: reservation.subtotalExclTax ? Number(reservation.subtotalExclTax) : null,
+          taxAmount: reservation.taxAmount ? Number(reservation.taxAmount) : null,
         },
         items: emailItems,
         reservationUrl,
         documentAttachments: invoiceDelivery?.attachments,
         contractSignatureUrl: invoiceDelivery?.contractSignatureUrl,
       }).catch((error) => {
-        console.error(
-          'Failed to dispatch customer reservation confirmed notification:',
-          error,
-        );
+        console.error("Failed to dispatch customer reservation confirmed notification:", error);
       });
     }
 
@@ -887,9 +850,7 @@ async function handleCheckoutCompleted(
       `Reservation ${reservationId} confirmed via webhook. Deposit status: ${newDepositStatus}`,
     );
   } else {
-    console.log(
-      `Reservation ${reservationId} already ${reservation.status}, payment recorded`,
-    );
+    console.log(`Reservation ${reservationId} already ${reservation.status}, payment recorded`);
   }
 }
 
@@ -897,7 +858,7 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
   const reservationId = session.metadata?.reservationId;
   if (!reservationId) return;
 
-  const currency = session.currency?.toUpperCase() || 'EUR';
+  const currency = session.currency?.toUpperCase() || "EUR";
   const amount = fromStripeCents(session.amount_total || 0, currency);
 
   // Update pending payment to failed/cancelled
@@ -905,11 +866,11 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
     where: eq(payments.stripeCheckoutSessionId, session.id),
   });
 
-  if (existingPayment && existingPayment.status === 'pending') {
+  if (existingPayment && existingPayment.status === "pending") {
     await db
       .update(payments)
       .set({
-        status: 'cancelled',
+        status: "cancelled",
         updatedAt: new Date(),
       })
       .where(eq(payments.id, existingPayment.id));
@@ -919,16 +880,18 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
   await db.insert(reservationActivity).values({
     id: nanoid(),
     reservationId,
-    activityType: 'payment_expired',
+    activityType: "payment_expired",
     description: null,
     metadata: {
       checkoutSessionId: session.id,
       amount,
       currency,
-      method: 'stripe',
+      method: "stripe",
     },
     createdAt: new Date(),
   });
+
+  await failMarketplaceBookingAttempt(reservationId);
 
   console.log(`Checkout session expired for reservation ${reservationId}`);
 }
@@ -946,18 +909,15 @@ async function handleDepositAuthorized(
   connectedAccountId?: string,
 ) {
   // Only handle deposit_hold type payments
-  if (paymentIntent.metadata?.type !== 'deposit_hold') return;
+  if (paymentIntent.metadata?.type !== "deposit_hold") return;
 
   const reservationId = paymentIntent.metadata?.reservationId;
 
   // SECURITY: Validate reservationId format
   if (!isValidReservationId(reservationId)) {
-    console.error(
-      '[SECURITY] Invalid reservationId in deposit PaymentIntent metadata',
-      {
-        reservationId,
-      },
-    );
+    console.error("[SECURITY] Invalid reservationId in deposit PaymentIntent metadata", {
+      reservationId,
+    });
     return;
   }
 
@@ -965,7 +925,7 @@ async function handleDepositAuthorized(
   const { valid } = await validateConnectedAccountForReservation(
     reservationId,
     connectedAccountId,
-    'deposit_authorized',
+    "deposit_authorized",
   );
   if (!valid) return;
 
@@ -975,9 +935,7 @@ async function handleDepositAuthorized(
   });
 
   if (existingPayment) {
-    console.log(
-      `Deposit hold already recorded for PI ${paymentIntent.id}, skipping`,
-    );
+    console.log(`Deposit hold already recorded for PI ${paymentIntent.id}, skipping`);
     return;
   }
 
@@ -993,9 +951,9 @@ async function handleDepositAuthorized(
     id: nanoid(),
     reservationId,
     amount: amount.toFixed(2),
-    type: 'deposit_hold',
-    method: 'stripe',
-    status: 'authorized',
+    type: "deposit_hold",
+    method: "stripe",
+    status: "authorized",
     stripePaymentIntentId: paymentIntent.id,
     stripePaymentMethodId: paymentIntent.payment_method as string | null,
     authorizationExpiresAt: expiresAt,
@@ -1008,7 +966,7 @@ async function handleDepositAuthorized(
   await db
     .update(reservations)
     .set({
-      depositStatus: 'authorized',
+      depositStatus: "authorized",
       depositPaymentIntentId: paymentIntent.id,
       depositAuthorizationExpiresAt: expiresAt,
       stripePaymentMethodId: paymentIntent.payment_method as string | null,
@@ -1020,7 +978,7 @@ async function handleDepositAuthorized(
   await db.insert(reservationActivity).values({
     id: nanoid(),
     reservationId,
-    activityType: 'deposit_authorized',
+    activityType: "deposit_authorized",
     metadata: {
       paymentIntentId: paymentIntent.id,
       amount,
@@ -1041,18 +999,15 @@ async function handleDepositReleased(
   connectedAccountId?: string,
 ) {
   // Only handle deposit_hold type payments
-  if (paymentIntent.metadata?.type !== 'deposit_hold') return;
+  if (paymentIntent.metadata?.type !== "deposit_hold") return;
 
   const reservationId = paymentIntent.metadata?.reservationId;
 
   // SECURITY: Validate reservationId format
   if (!isValidReservationId(reservationId)) {
-    console.error(
-      '[SECURITY] Invalid reservationId in deposit release metadata',
-      {
-        reservationId,
-      },
-    );
+    console.error("[SECURITY] Invalid reservationId in deposit release metadata", {
+      reservationId,
+    });
     return;
   }
 
@@ -1060,7 +1015,7 @@ async function handleDepositReleased(
   const { valid } = await validateConnectedAccountForReservation(
     reservationId,
     connectedAccountId,
-    'deposit_released',
+    "deposit_released",
   );
   if (!valid) return;
 
@@ -1073,7 +1028,7 @@ async function handleDepositReleased(
     await db
       .update(payments)
       .set({
-        status: 'cancelled',
+        status: "cancelled",
         updatedAt: new Date(),
       })
       .where(eq(payments.id, depositPayment.id));
@@ -1083,7 +1038,7 @@ async function handleDepositReleased(
   await db
     .update(reservations)
     .set({
-      depositStatus: 'released',
+      depositStatus: "released",
       updatedAt: new Date(),
     })
     .where(eq(reservations.id, reservationId));
@@ -1095,7 +1050,7 @@ async function handleDepositReleased(
   await db.insert(reservationActivity).values({
     id: nanoid(),
     reservationId,
-    activityType: 'deposit_released',
+    activityType: "deposit_released",
     metadata: {
       paymentIntentId: paymentIntent.id,
       amount,
@@ -1115,18 +1070,15 @@ async function handleDepositCaptured(
   connectedAccountId?: string,
 ) {
   // Only handle deposit_hold type payments
-  if (paymentIntent.metadata?.type !== 'deposit_hold') return;
+  if (paymentIntent.metadata?.type !== "deposit_hold") return;
 
   const reservationId = paymentIntent.metadata?.reservationId;
 
   // SECURITY: Validate reservationId format
   if (!isValidReservationId(reservationId)) {
-    console.error(
-      '[SECURITY] Invalid reservationId in deposit capture metadata',
-      {
-        reservationId,
-      },
-    );
+    console.error("[SECURITY] Invalid reservationId in deposit capture metadata", {
+      reservationId,
+    });
     return;
   }
 
@@ -1134,15 +1086,12 @@ async function handleDepositCaptured(
   const { valid } = await validateConnectedAccountForReservation(
     reservationId,
     connectedAccountId,
-    'deposit_captured',
+    "deposit_captured",
   );
   if (!valid) return;
 
   const currency = paymentIntent.currency.toUpperCase();
-  const capturedAmount = fromStripeCents(
-    paymentIntent.amount_received,
-    currency,
-  );
+  const capturedAmount = fromStripeCents(paymentIntent.amount_received, currency);
   const originalAmount = fromStripeCents(paymentIntent.amount, currency);
 
   // Find and update the deposit hold payment
@@ -1154,7 +1103,7 @@ async function handleDepositCaptured(
     await db
       .update(payments)
       .set({
-        status: 'completed',
+        status: "completed",
         capturedAmount: capturedAmount.toFixed(2),
         paidAt: new Date(),
         updatedAt: new Date(),
@@ -1170,7 +1119,7 @@ async function handleDepositCaptured(
     const existingCapture = await db.query.payments.findFirst({
       where: and(
         eq(payments.stripePaymentIntentId, paymentIntent.id),
-        eq(payments.type, 'deposit_capture'),
+        eq(payments.type, "deposit_capture"),
       ),
     });
     const capturePaymentId = existingCapture?.id ?? nanoid();
@@ -1179,9 +1128,9 @@ async function handleDepositCaptured(
         id: capturePaymentId,
         reservationId,
         amount: capturedAmount.toFixed(2),
-        type: 'deposit_capture',
-        method: 'stripe',
-        status: 'completed',
+        type: "deposit_capture",
+        method: "stripe",
+        status: "completed",
         stripePaymentIntentId: paymentIntent.id,
         stripeChargeId: paymentIntent.latest_charge as string | null,
         currency,
@@ -1190,17 +1139,14 @@ async function handleDepositCaptured(
         updatedAt: new Date(),
       });
     }
-    await tryGenerateInvoiceForPayment(
-      capturePaymentId,
-      'stripe_deposit_captured_webhook',
-    );
+    await tryGenerateInvoiceForPayment(capturePaymentId, "stripe_deposit_captured_webhook");
   }
 
   // Update reservation deposit status
   await db
     .update(reservations)
     .set({
-      depositStatus: 'captured',
+      depositStatus: "captured",
       updatedAt: new Date(),
     })
     .where(eq(reservations.id, reservationId));
@@ -1209,7 +1155,7 @@ async function handleDepositCaptured(
   await db.insert(reservationActivity).values({
     id: nanoid(),
     reservationId,
-    activityType: 'deposit_captured',
+    activityType: "deposit_captured",
     metadata: {
       paymentIntentId: paymentIntent.id,
       capturedAmount,
@@ -1219,9 +1165,7 @@ async function handleDepositCaptured(
     createdAt: new Date(),
   });
 
-  console.log(
-    `Deposit captured for reservation ${reservationId}: ${capturedAmount} ${currency}`,
-  );
+  console.log(`Deposit captured for reservation ${reservationId}: ${capturedAmount} ${currency}`);
 }
 
 /**
@@ -1236,10 +1180,7 @@ async function handleDepositFailed(
 
   // SECURITY: Validate reservationId format
   if (!isValidReservationId(reservationId)) {
-    console.error(
-      '[SECURITY] Invalid reservationId in payment failed metadata',
-      { reservationId },
-    );
+    console.error("[SECURITY] Invalid reservationId in payment failed metadata", { reservationId });
     return;
   }
 
@@ -1247,24 +1188,23 @@ async function handleDepositFailed(
   const { valid, reservation } = await validateConnectedAccountForReservation(
     reservationId,
     connectedAccountId,
-    'payment_failed',
+    "payment_failed",
   );
   if (!valid || !reservation) return;
 
   const currency = paymentIntent.currency.toUpperCase();
   const amount = fromStripeCents(paymentIntent.amount, currency);
-  const errorMessage =
-    paymentIntent.last_payment_error?.message || 'Unknown error';
+  const errorMessage = paymentIntent.last_payment_error?.message || "Unknown error";
   const errorCode = paymentIntent.last_payment_error?.code || null;
   const declineCode = paymentIntent.last_payment_error?.decline_code || null;
-  const isDepositHold = paymentIntent.metadata?.type === 'deposit_hold';
+  const isDepositHold = paymentIntent.metadata?.type === "deposit_hold";
 
   if (isDepositHold) {
     // Handle deposit authorization failure
     await db
       .update(reservations)
       .set({
-        depositStatus: 'failed',
+        depositStatus: "failed",
         updatedAt: new Date(),
       })
       .where(eq(reservations.id, reservationId));
@@ -1273,7 +1213,7 @@ async function handleDepositFailed(
     await db.insert(reservationActivity).values({
       id: nanoid(),
       reservationId,
-      activityType: 'deposit_failed',
+      activityType: "deposit_failed",
       metadata: {
         paymentIntentId: paymentIntent.id,
         amount,
@@ -1284,9 +1224,7 @@ async function handleDepositFailed(
       createdAt: new Date(),
     });
 
-    console.log(
-      `Deposit authorization failed for reservation ${reservationId}`,
-    );
+    console.log(`Deposit authorization failed for reservation ${reservationId}`);
   } else {
     // Handle rental payment failure
     // If this payment was already completed, ignore stale failed events
@@ -1295,18 +1233,16 @@ async function handleDepositFailed(
       where: eq(payments.stripePaymentIntentId, paymentIntent.id),
     });
 
-    if (existingPayment?.status === 'completed') {
-      console.log(
-        `Ignoring stale payment_failed for completed PI ${paymentIntent.id}`,
-      );
+    if (existingPayment?.status === "completed") {
+      console.log(`Ignoring stale payment_failed for completed PI ${paymentIntent.id}`);
       return;
     }
 
-    if (existingPayment && existingPayment.status !== 'failed') {
+    if (existingPayment && existingPayment.status !== "failed") {
       await db
         .update(payments)
         .set({
-          status: 'failed',
+          status: "failed",
           updatedAt: new Date(),
         })
         .where(eq(payments.id, existingPayment.id));
@@ -1316,12 +1252,12 @@ async function handleDepositFailed(
     await db.insert(reservationActivity).values({
       id: nanoid(),
       reservationId,
-      activityType: 'payment_failed',
+      activityType: "payment_failed",
       metadata: {
         paymentIntentId: paymentIntent.id,
         amount,
         currency,
-        method: 'stripe',
+        method: "stripe",
         error: errorMessage,
         errorCode,
         declineCode,
@@ -1329,14 +1265,16 @@ async function handleDepositFailed(
       createdAt: new Date(),
     });
 
-    console.log(
-      `Payment failed for reservation ${reservationId}: ${errorMessage}`,
-    );
+    if (reservation.source === "marketplace") {
+      await failMarketplaceBookingAttempt(reservationId);
+    }
+
+    console.log(`Payment failed for reservation ${reservationId}: ${errorMessage}`);
   }
 
   // Dispatch admin notification for payment failure
   if (reservation) {
-    dispatchNotification('payment_failed', {
+    dispatchNotification("payment_failed", {
       store: {
         id: reservation.store.id,
         name: reservation.store.name,
@@ -1365,7 +1303,7 @@ async function handleDepositFailed(
         amount,
       },
     }).catch((error) => {
-      console.error('Failed to dispatch payment failed notification:', error);
+      console.error("Failed to dispatch payment failed notification:", error);
     });
 
     // Platform admin notification
@@ -1380,16 +1318,10 @@ async function handleDepositFailed(
   }
 }
 
-async function handleChargeRefunded(
-  charge: Stripe.Charge,
-  connectedAccountId?: string,
-) {
+async function handleChargeRefunded(charge: Stripe.Charge, connectedAccountId?: string) {
   // Find payment by charge ID
   const payment = await db.query.payments.findFirst({
-    where: and(
-      eq(payments.stripeChargeId, charge.id),
-      isNull(payments.stripeRefundId),
-    ),
+    where: and(eq(payments.stripeChargeId, charge.id), isNull(payments.stripeRefundId)),
   });
 
   if (!payment) {
@@ -1400,16 +1332,13 @@ async function handleChargeRefunded(
   const { valid } = await validateConnectedAccountForReservation(
     payment.reservationId,
     connectedAccountId,
-    'charge_refunded',
+    "charge_refunded",
   );
   if (!valid) return;
 
   const currency = charge.currency.toUpperCase();
   const refundAmount = fromStripeCents(charge.amount_refunded, currency);
-  const netAmount = fromStripeCents(
-    Math.max(0, charge.amount - charge.amount_refunded),
-    currency,
-  );
+  const netAmount = fromStripeCents(Math.max(0, charge.amount - charge.amount_refunded), currency);
   const isFullRefund = charge.refunded;
 
   // Keep analytics net of cumulative partial refunds; full refunds are excluded by status.
@@ -1417,13 +1346,12 @@ async function handleChargeRefunded(
     .update(payments)
     .set({
       amount: netAmount.toFixed(2),
-      status: isFullRefund ? 'refunded' : 'completed',
+      status: isFullRefund ? "refunded" : "completed",
       updatedAt: new Date(),
     })
     .where(eq(payments.id, payment.id));
 
-  const rentalRefunds =
-    payment.type === 'rental' ? (charge.refunds?.data ?? []) : [];
+  const rentalRefunds = payment.type === "rental" ? (charge.refunds?.data ?? []) : [];
   for (const refund of rentalRefunds) {
     const individualRefundAmount = fromStripeCents(refund.amount, currency);
     const refundPaymentId = await tryEnsureRefundPaymentRecord(
@@ -1432,16 +1360,16 @@ async function handleChargeRefunded(
         stripeRefundId: refund.id,
         amount: individualRefundAmount,
         currency,
-        type: 'rental',
+        type: "rental",
         paidAt: new Date(refund.created * 1000),
       },
-      'stripe_charge_refunded_webhook',
+      "stripe_charge_refunded_webhook",
     );
     if (!refundPaymentId) continue;
     await tryGenerateCreditNoteForRefund(
       { originalPaymentId: payment.id, refundPaymentId },
       individualRefundAmount,
-      'stripe_charge_refunded_webhook',
+      "stripe_charge_refunded_webhook",
     );
   }
 
@@ -1463,11 +1391,9 @@ async function handleChargeRefunded(
   }
 
   const netAmountCents = Math.max(0, charge.amount - charge.amount_refunded);
-  const minQualifyingAmountCents =
-    getReferralProgramConfig().minQualifyingAmountCents;
+  const minQualifyingAmountCents = getReferralProgramConfig().minQualifyingAmountCents;
   const shouldClawbackReferralReward =
-    isFullRefund ||
-    (minQualifyingAmountCents > 0 && netAmountCents < minQualifyingAmountCents);
+    isFullRefund || (minQualifyingAmountCents > 0 && netAmountCents < minQualifyingAmountCents);
 
   // Referral Program: a fully refunded qualifying payment, or a partial refund that
   // drops the net online payment below the qualifying minimum, claws back the Referrer
@@ -1477,7 +1403,7 @@ async function handleChargeRefunded(
       stripeChargeId: charge.id,
       stripePaymentIntentId: payment.stripePaymentIntentId,
     }).catch((error) => {
-      console.error('[referral] reward clawback (refund) failed', {
+      console.error("[referral] reward clawback (refund) failed", {
         chargeId: charge.id,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -1488,7 +1414,7 @@ async function handleChargeRefunded(
   await db.insert(reservationActivity).values({
     id: nanoid(),
     reservationId: payment.reservationId,
-    activityType: 'payment_updated',
+    activityType: "payment_updated",
     metadata: {
       chargeId: charge.id,
       refundAmount,
@@ -1515,20 +1441,13 @@ async function reversePlatformFees({
   refundRatio: number;
   idempotencyScope: string;
 }): Promise<void> {
-  const { stripeApplicationFeeId, rows } =
-    await getReversibleFees(paymentIntentId);
+  const { stripeApplicationFeeId, rows } = await getReversibleFees(paymentIntentId);
   if (rows.length === 0) return;
 
   const totalFeeCents = rows.reduce((sum, r) => sum + r.amountCents, 0);
-  const alreadyReversedCents = rows.reduce(
-    (sum, r) => sum + r.amountReversedCents,
-    0,
-  );
+  const alreadyReversedCents = rows.reduce((sum, r) => sum + r.amountReversedCents, 0);
   const targetReversedCents = Math.round(totalFeeCents * refundRatio);
-  const incrementCents = Math.max(
-    0,
-    targetReversedCents - alreadyReversedCents,
-  );
+  const incrementCents = Math.max(0, targetReversedCents - alreadyReversedCents);
   if (incrementCents <= 0) return;
 
   if (stripeApplicationFeeId) {
@@ -1543,12 +1462,12 @@ async function reversePlatformFees({
     } catch (error) {
       // The application fee was already (fully) refunded out-of-band — treat as success
       // and reconcile the ledger. Any other error propagates so Stripe retries.
-      const message = error instanceof Error ? error.message.toLowerCase() : '';
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
       const alreadyRefunded =
-        message.includes('already') ||
-        message.includes('no refundable') ||
-        message.includes('greater than') ||
-        message.includes('exceeds');
+        message.includes("already") ||
+        message.includes("no refundable") ||
+        message.includes("greater than") ||
+        message.includes("exceeds");
       if (!alreadyRefunded) throw error;
     }
   }
@@ -1589,9 +1508,7 @@ async function handleAccountUpdated(account: Stripe.Account) {
     }).catch(() => {});
   }
 
-  console.log(
-    `Store ${store.id} Stripe status updated: charges=${chargesEnabled}`,
-  );
+  console.log(`Store ${store.id} Stripe status updated: charges=${chargesEnabled}`);
 }
 
 /**
@@ -1602,13 +1519,11 @@ async function handleAccountUpdated(account: Stripe.Account) {
  */
 async function handleChargeDisputeCreated(dispute: Stripe.Dispute) {
   const paymentIntentId =
-    typeof dispute.payment_intent === 'string'
+    typeof dispute.payment_intent === "string"
       ? dispute.payment_intent
       : (dispute.payment_intent?.id ?? null);
   if (!paymentIntentId) {
-    console.log(
-      `Dispute ${dispute.id} has no payment_intent; nothing to reverse`,
-    );
+    console.log(`Dispute ${dispute.id} has no payment_intent; nothing to reverse`);
     return;
   }
   await reversePlatformFees({
@@ -1622,7 +1537,7 @@ async function handleChargeDisputeCreated(dispute: Stripe.Dispute) {
   await clawbackReferrerRewardForQualifyingPayment({
     stripePaymentIntentId: paymentIntentId,
   }).catch((error) => {
-    console.error('[referral] reward clawback (dispute) failed', {
+    console.error("[referral] reward clawback (dispute) failed", {
       disputeId: dispute.id,
       error: error instanceof Error ? error.message : String(error),
     });
@@ -1638,16 +1553,14 @@ async function handleChargeDisputeCreated(dispute: Stripe.Dispute) {
  */
 async function handleAccountDeauthorized(connectedAccountId?: string) {
   if (!connectedAccountId) {
-    console.warn('account.application.deauthorized without an account id');
+    console.warn("account.application.deauthorized without an account id");
     return;
   }
   const store = await db.query.stores.findFirst({
     where: eq(stores.stripeAccountId, connectedAccountId),
   });
   if (!store) {
-    console.log(
-      `No store found for deauthorized account ${connectedAccountId}`,
-    );
+    console.log(`No store found for deauthorized account ${connectedAccountId}`);
     return;
   }
   await db
@@ -1658,7 +1571,5 @@ async function handleAccountDeauthorized(connectedAccountId?: string) {
       updatedAt: new Date(),
     })
     .where(eq(stores.id, store.id));
-  console.warn(
-    `[stripe] Connected account deauthorized for store ${store.id}; charges disabled`,
-  );
+  console.warn(`[stripe] Connected account deauthorized for store ${store.id}; charges disabled`);
 }

@@ -3,9 +3,12 @@ import { Suspense } from "react";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
+import { getMarketplaceChannelState } from "@louez/api/services";
 import { db, users } from "@louez/db";
 import type { StoreSettings } from "@louez/types";
 import { Separator, SidebarInset, SidebarProvider } from "@louez/ui";
+
+import { env } from "@/env";
 
 import { DashboardBreadcrumbs } from "@/components/dashboard/dashboard-breadcrumbs";
 import { DashboardBreadcrumbsProvider } from "@/components/dashboard/dashboard-breadcrumbs-context";
@@ -32,6 +35,7 @@ import { isElectronicInvoicingEnabled } from "@/lib/invoicing/feature";
 import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
 import { getCurrentStore, getUserStores } from "@/lib/store-context";
 import { getCurrentPlanSlug } from "@/lib/stripe/subscriptions";
+import { REEENT_SIGNUP_ORIGIN } from "@/lib/utils/signup-origin";
 import { parseWhatsNewProgress } from "@/lib/whats-new.progress";
 
 import { StoreProvider } from "@/contexts/store-context";
@@ -67,6 +71,24 @@ const getSidebarAiCredits = async (
   };
 };
 
+/**
+ * Public reeent listing of a store published on the marketplace, or null when
+ * there is nothing to link to. The channel lookup runs on every dashboard
+ * render, so a failure there degrades to "no link" instead of taking the whole
+ * dashboard down with it.
+ */
+const getMarketplaceListingUrl = async (storeId: string): Promise<string | null> => {
+  if (!env.MARKETPLACE_URL) return null;
+  try {
+    const { channel } = await getMarketplaceChannelState({ storeId });
+    if (channel?.status !== "published") return null;
+    // The marketplace redirect is locale-agnostic; `/fr` is its canonical entry.
+    return new URL(`/fr/go/louez/${storeId}`, env.MARKETPLACE_URL).toString();
+  } catch {
+    return null;
+  }
+};
+
 export default async function DashboardMainLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
@@ -94,7 +116,15 @@ export default async function DashboardMainLayout({ children }: { children: Reac
   const showAIChat = isAIChatConfigured();
 
   // Get current plan for the store
-  const [planSlug, limits, isPlatformAdmin, userPreferences, aiCredits, electronicInvoicingEnabled] = await Promise.all([
+  const [
+    planSlug,
+    limits,
+    isPlatformAdmin,
+    userPreferences,
+    aiCredits,
+    marketplaceListingUrl,
+    electronicInvoicingEnabled,
+  ] = await Promise.all([
     getCurrentPlanSlug(store.id),
     getStoreLimits(store.id),
     isCurrentUserPlatformAdmin(),
@@ -106,6 +136,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
       where: eq(users.id, session.user.id),
     }),
     getSidebarAiCredits(store.id),
+    getMarketplaceListingUrl(store.id),
     isElectronicInvoicingEnabled(store.id),
   ]);
 
@@ -137,6 +168,8 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                     userImage={session.user.image}
                     isPlatformAdmin={isPlatformAdmin}
                     aiCredits={aiCredits}
+                    marketplaceListingUrl={marketplaceListingUrl}
+                    isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}
                   />
                   <SidebarInset className="min-h-0 min-w-0 overflow-clip">
                     <header className="bg-background/90 supports-backdrop-filter:bg-background/70 z-30 flex h-14 shrink-0 items-center gap-2 border-b px-2.5 backdrop-blur">

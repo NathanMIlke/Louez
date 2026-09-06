@@ -6,11 +6,13 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, Suspense } from "react";
 import { usePublicEnv } from "@/components/shared/public-env-provider";
 
+type SalesChannel = "marketplace";
+
 /**
  * Tracks page views on route changes in Next.js App Router.
  * Must be used inside PostHogProvider and Suspense boundary.
  */
-function PostHogPageView() {
+function PostHogPageView({ channel }: { channel?: SalesChannel }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const posthogClient = usePostHog();
@@ -22,9 +24,12 @@ function PostHogPageView() {
       if (search) {
         url = url + "?" + search;
       }
-      posthogClient.capture("$pageview", { $current_url: url });
+      posthogClient.capture("$pageview", {
+        $current_url: url,
+        ...(channel && { channel }),
+      });
     }
-  }, [pathname, searchParams, posthogClient]);
+  }, [channel, pathname, searchParams, posthogClient]);
 
   return null;
 }
@@ -50,6 +55,7 @@ function PostHogIdentify({ user }: { user: PostHogProviderProps["user"] }) {
 
 interface PostHogProviderProps {
   children: React.ReactNode;
+  channel?: SalesChannel;
   user?: {
     id: string;
     email: string;
@@ -69,8 +75,20 @@ interface PostHogProviderProps {
  * configuration before route-level analytics effects run. This provider adds
  * the React context and user-aware tracking for configured deployments.
  */
-export function PostHogProvider({ children, user }: PostHogProviderProps) {
+export function PostHogProvider({ children, channel, user }: PostHogProviderProps) {
   const { NEXT_PUBLIC_POSTHOG_KEY: posthogKey } = usePublicEnv();
+
+  useEffect(() => {
+    if (!posthogKey) {
+      return;
+    }
+
+    if (channel) {
+      posthog.register_for_session({ channel });
+    } else {
+      posthog.unregister_for_session("channel");
+    }
+  }, [channel, posthogKey]);
 
   // Skip rendering if PostHog is not configured
   if (!posthogKey) {
@@ -80,7 +98,7 @@ export function PostHogProvider({ children, user }: PostHogProviderProps) {
   return (
     <PHProvider client={posthog}>
       <Suspense fallback={null}>
-        <PostHogPageView />
+        <PostHogPageView channel={channel} />
       </Suspense>
       {user && <PostHogIdentify user={user} />}
       {children}

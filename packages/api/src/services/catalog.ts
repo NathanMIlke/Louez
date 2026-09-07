@@ -68,6 +68,7 @@ export interface StoreSnapshot {
   latitude: number | null;
   longitude: number | null;
   logoUrl: string | null;
+  heroImages: string[];
   currency: string;
   timezone: string;
   channel: {
@@ -375,6 +376,7 @@ export async function listStoreSnapshots(params: CatalogListParams): Promise<{
       latitude: stores.latitude,
       longitude: stores.longitude,
       logoUrl: stores.logoUrl,
+      theme: stores.theme,
       settings: stores.settings,
       channelStatus: storeMarketplaceChannels.status,
       publishedAt: storeMarketplaceChannels.publishedAt,
@@ -453,6 +455,7 @@ export async function listStoreSnapshots(params: CatalogListParams): Promise<{
       latitude: toNullableNumber(row.latitude),
       longitude: toNullableNumber(row.longitude),
       logoUrl: row.logoUrl === null ? null : toAbsoluteUrl(row.logoUrl, params.mediaBaseUrl),
+      heroImages: (row.theme?.heroImages ?? []).map((url) => toAbsoluteUrl(url, params.mediaBaseUrl)),
       currency: row.settings?.currency ?? "EUR",
       timezone: row.settings?.timezone ?? "Europe/Paris",
       channel: {

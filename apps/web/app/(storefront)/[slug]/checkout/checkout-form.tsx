@@ -181,15 +181,14 @@ export function CheckoutForm({
     getTotal,
     globalStartDate,
     globalEndDate,
-    getTotalSavings,
-    getOriginalSubtotal,
+    getDisplayableSavings,
   } = useCart();
 
   const subtotal = getSubtotal();
   const totalDeposit = getTotalDeposit();
   const total = getTotal();
-  const totalSavings = getTotalSavings();
-  const originalSubtotal = getOriginalSubtotal();
+  // Only the savings the store is willing to advertise reach the summary.
+  const { savings: totalSavings, originalSubtotal } = getDisplayableSavings();
 
   const advisorGate = useCheckoutAdvisorGate(advisorMode ?? null);
 

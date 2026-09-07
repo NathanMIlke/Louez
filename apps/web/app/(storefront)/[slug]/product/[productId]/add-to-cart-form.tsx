@@ -66,6 +66,7 @@ import {
   findBlockingRequiredAccessories,
   selectOptionalAccessories,
 } from '@/lib/utils/cart-required-accessories';
+import { getEffectiveDiscountPercent } from '@/lib/utils/discount-visibility';
 import { getMinStartDate } from '@/lib/utils/duration';
 import {
   formatDurationFromMinutes,
@@ -73,7 +74,7 @@ import {
 } from '@/lib/utils/rental-duration';
 
 import { useCart } from '@/contexts/cart-context';
-import { useStoreCurrency } from '@/contexts/store-context';
+import { useDiscountVisibility, useStoreCurrency } from '@/contexts/store-context';
 
 interface Accessory {
   id: string;
@@ -167,6 +168,7 @@ export function AddToCartForm({
 }: AddToCartFormProps) {
   const t = useTranslations('storefront.product');
   const currency = useStoreCurrency();
+  const isDiscountVisible = useDiscountVisibility();
   const { addItem, items: cartItems } = useCart();
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
@@ -499,6 +501,9 @@ export function AddToCartForm({
   const originalSubtotal = priceResult.originalSubtotal;
   const savings = priceResult.savings;
   const discountPercent = priceResult.discountPercent;
+  // A markdown above the store cap is shown as the plain price.
+  const showSavings =
+    savings > 0 && isDiscountVisible(getEffectiveDiscountPercent(priceResult));
   const totalDeposit = deposit * quantity;
 
   // Optional accessories feed the upsell modal: in stock, not already in the
@@ -842,7 +847,7 @@ export function AddToCartForm({
                 </>
               )}
             </span>
-            {savings > 0 ? (
+            {showSavings ? (
               <span className="text-muted-foreground line-through">
                 {formatCurrency(originalSubtotal, currency)}
               </span>
@@ -850,7 +855,7 @@ export function AddToCartForm({
               <span>{formatCurrency(subtotal, currency)}</span>
             )}
           </div>
-          {savings > 0 && (
+          {showSavings && (
             <div className="flex justify-between text-sm text-green-600">
               <span className="flex items-center gap-2">
                 {t('tieredPricing.discountApplied')}
@@ -874,7 +879,7 @@ export function AddToCartForm({
             <span>{t('total')}</span>
             <span>{formatCurrency(subtotal + totalDeposit, currency)}</span>
           </div>
-          {savings > 0 && (
+          {showSavings && (
             <div className="pt-1 text-center text-xs text-green-600">
               {t('tieredPricing.youSave', {
                 amount: formatCurrency(savings, currency),

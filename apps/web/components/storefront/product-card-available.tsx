@@ -38,12 +38,13 @@ import {
   findBlockingRequiredAccessories,
   selectOptionalAccessories,
 } from '@/lib/utils/cart-required-accessories';
+import { getEffectiveDiscountPercent } from '@/lib/utils/discount-visibility';
 import { calculateDuration, getDetailedDuration } from '@/lib/utils/duration';
 
 import { useCart } from '@/contexts/cart-context';
 import {
   useStoreCurrency,
-  useStoreMaxDiscountPercent,
+  useDiscountVisibility,
 } from '@/contexts/store-context';
 
 import { AccessoriesModal } from './accessories-modal';
@@ -147,7 +148,7 @@ export function ProductCardAvailable({
 }: ProductCardAvailableProps) {
   const t = useTranslations('storefront.product');
   const currency = useStoreCurrency();
-  const maxDiscountPercent = useStoreMaxDiscountPercent();
+  const isDiscountVisible = useDiscountVisibility();
   const {
     addItem,
     getCartLinesByProductId,
@@ -284,8 +285,11 @@ export function ProductCardAvailable({
 
   const totalPrice = priceResult.subtotal;
   const originalPrice = priceResult.originalSubtotal;
-  const hasDiscount = priceResult.savings > 0;
   const discountPercent = priceResult.discountPercent;
+  // A markdown above the store cap is shown as the plain price.
+  const hasDiscount =
+    priceResult.savings > 0 &&
+    isDiscountVisible(getEffectiveDiscountPercent(priceResult));
 
   // Upsell accessories: optional and in stock. Required ones ride along with
   // the product, and block it when the store cannot supply them.
@@ -584,15 +588,12 @@ export function ProductCardAvailable({
             </div>
 
             {/* Discount badge or cart indicator */}
-            {hasDiscount &&
-              !inCart &&
-              discountPercent != null &&
-              (maxDiscountPercent == null || discountPercent <= maxDiscountPercent) && (
-                <Badge variant="progress" className="shrink-0 text-xs">
-                  <TrendingDownSolidIcon className="mr-0.5 h-3 w-3" />-{Math.floor(discountPercent)}
-                  %
-                </Badge>
-              )}
+            {hasDiscount && !inCart && discountPercent != null && (
+              <Badge variant="progress" className="shrink-0 text-xs">
+                <TrendingDownSolidIcon className="mr-0.5 h-3 w-3" />-{Math.floor(discountPercent)}
+                %
+              </Badge>
+            )}
             {inCart && (
               <div className="text-primary flex items-center gap-0.5">
                 <Check className="h-3 w-3" />

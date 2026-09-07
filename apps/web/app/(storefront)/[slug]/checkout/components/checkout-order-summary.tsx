@@ -25,10 +25,11 @@ import { useFormatLocale } from '@/hooks/use-format-locale';
 
 import { getDetailedDuration } from '@/lib/utils/duration';
 import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
+import { getEffectiveDiscountPercent } from '@/lib/utils/discount-visibility';
 import { groupCartLinesByParent } from '@/lib/utils/cart-required-accessories';
 
 import type { CartItem } from '@/contexts/cart-context';
-import { useStoreMaxDiscountPercent } from '@/contexts/store-context';
+import { useDiscountVisibility } from '@/contexts/store-context';
 
 import type { ValidatedPromo } from '../promo-actions';
 import type { LineResolutionState } from '../types';
@@ -115,7 +116,7 @@ export function CheckoutOrderSummary({
   const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale();
   const formatMoney = (amount: number, currencyOverride = currency) =>
     formatCurrency(amount, currencyOverride, formatLocale);
-  const maxDiscountPercent = useStoreMaxDiscountPercent();
+  const isDiscountVisible = useDiscountVisibility();
   const showInsuranceUi =
     tulipInsurance?.enabled && tulipInsurance.mode !== 'no_public';
   const showInsuranceSummary = showInsuranceUi && !isTulipQuoteLoading && isTulipQuoteFetched;
@@ -199,8 +200,11 @@ export function CheckoutOrderSummary({
                   globalEndDate,
                 );
                 const itemTotal = priceResult.subtotal;
-                const itemSavings = priceResult.savings;
                 const discountPercent = priceResult.discountPercent;
+                const showItemDiscount = isDiscountVisible(
+                  getEffectiveDiscountPercent(priceResult),
+                );
+                const itemSavings = showItemDiscount ? priceResult.savings : 0;
                 const resolutionState = lineResolutions[item.lineId];
                 const requestedAttributes = item.selectedAttributes;
                 const resolvedAttributes =
@@ -299,12 +303,11 @@ export function CheckoutOrderSummary({
                           </>
                         )}
                       </p>
-                      {discountPercent != null && discountPercent > 0 &&
-                        (maxDiscountPercent == null || discountPercent <= maxDiscountPercent) && (
-                          <Badge variant="success" className="mt-1 text-xs">
-                            -{Math.floor(discountPercent)}%
-                          </Badge>
-                        )}
+                      {showItemDiscount && discountPercent != null && (
+                        <Badge variant="success" className="mt-1 text-xs">
+                          -{Math.floor(discountPercent)}%
+                        </Badge>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">

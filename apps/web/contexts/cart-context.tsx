@@ -21,6 +21,11 @@ import type {
 import { orpc } from '@/lib/orpc/react';
 import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
 import {
+  type DisplayableSavings,
+  getDisplayableSavings,
+} from '@/lib/utils/discount-visibility';
+import { useStoreMaxDiscountPercent } from '@/contexts/store-context';
+import {
   clampCartLineQuantityToAvailableMaximum,
   clampRequiredAccessoryLineQuantity,
   getCartLineAvailableMaximumQuantity,
@@ -129,6 +134,8 @@ interface CartContextValue {
   // New: tiered pricing helpers
   getTotalSavings: () => number;
   getOriginalSubtotal: () => number;
+  /** Savings the store is willing to advertise, per its discount display cap. */
+  getDisplayableSavings: () => DisplayableSavings;
   getPricingSummary: () => CartPricingSummary;
 }
 
@@ -390,6 +397,7 @@ function attachRequiredAccessoryLines(params: {
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const maxDiscountPercent = useStoreMaxDiscountPercent();
   const [storeSlug, setStoreSlug] = useState<string | null>(null);
   const [globalStartDate, setGlobalStartDate] = useState<string | null>(null);
   const [globalEndDate, setGlobalEndDate] = useState<string | null>(null);
@@ -883,6 +891,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return getOriginalSubtotal() - getSubtotal();
   }, [getOriginalSubtotal, getSubtotal]);
 
+  // Savings the summary blocks may show: lines discounted beyond the store cap
+  // are presented at their discounted price, with no markdown at all.
+  const getDisplayableSavingsForCart = useCallback(() => {
+    return getDisplayableSavings(
+      items.map((item) =>
+        calculateCartItemPrice(item, globalStartDate, globalEndDate),
+      ),
+      maxDiscountPercent,
+    );
+  }, [items, globalStartDate, globalEndDate, maxDiscountPercent]);
+
   const getTotalDeposit = useCallback(() => {
     return items.reduce((sum, item) => sum + item.deposit * item.quantity, 0);
   }, [items]);
@@ -949,6 +968,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         isProductInCart,
         getTotalSavings,
         getOriginalSubtotal,
+        getDisplayableSavings: getDisplayableSavingsForCart,
         getPricingSummary,
       }}
     >

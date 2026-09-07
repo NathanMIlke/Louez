@@ -75,9 +75,10 @@ export function CartSidebar({
     getItemCount,
     getSubtotal,
     getTotal,
-    getTotalSavings,
-    getOriginalSubtotal,
+    getDisplayableSavings,
   } = useCart();
+  const { savings: displayableSavings, originalSubtotal: displayableOriginalSubtotal } =
+    getDisplayableSavings();
 
   const itemCount = getItemCount();
   const tProduct = useTranslations('storefront.product');
@@ -195,17 +196,17 @@ export function CartSidebar({
 
           {/* Totals */}
           <div className="space-y-2">
-            {getTotalSavings() > 0 ? (
+            {displayableSavings > 0 ? (
               <>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{t('subtotal')}</span>
                   <span className="text-muted-foreground line-through">
-                    {formatMoney(getOriginalSubtotal(), currency)}
+                    {formatMoney(displayableOriginalSubtotal, currency)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm text-green-600">
                   <span>{t('discount')}</span>
-                  <span>-{formatMoney(getTotalSavings(), currency)}</span>
+                  <span>-{formatMoney(displayableSavings, currency)}</span>
                 </div>
                 <div className="flex justify-between text-sm font-medium">
                   <span>{t('discountedSubtotal')}</span>
@@ -225,10 +226,10 @@ export function CartSidebar({
                 {formatMoney(getTotal(), currency)}
               </span>
             </div>
-            {getTotalSavings() > 0 && (
+            {displayableSavings > 0 && (
               <p className="text-center text-xs text-green-600">
                 {t('youSave', {
-                  amount: formatMoney(getTotalSavings(), currency),
+                  amount: formatMoney(displayableSavings, currency),
                 })}
               </p>
             )}

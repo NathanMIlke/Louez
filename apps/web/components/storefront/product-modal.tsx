@@ -60,6 +60,7 @@ import {
   getDetailedDuration,
 } from '@/lib/utils/duration';
 import { pickActiveVariantAttributes } from '@/lib/util.variant-visibility';
+import { getEffectiveDiscountPercent } from '@/lib/utils/discount-visibility';
 import {
   buildRequiredAccessoryCartInputs,
   findBlockingRequiredAccessories,
@@ -70,7 +71,7 @@ import { useAnalytics } from '@/contexts/analytics-context';
 import { useCart } from '@/contexts/cart-context';
 import {
   useStoreCurrency,
-  useStoreMaxDiscountPercent,
+  useDiscountVisibility,
 } from '@/contexts/store-context';
 
 import { AccessoriesModal } from './accessories-modal';
@@ -182,7 +183,6 @@ export function ProductModal({
   const t = useTranslations('storefront.productModal');
   const tProduct = useTranslations('storefront.product');
   const currency = useStoreCurrency();
-  const maxDiscountPercent = useStoreMaxDiscountPercent();
   const {
     addItem,
     updateItemQuantityByLineId,
@@ -191,9 +191,7 @@ export function ProductModal({
   } = useCart();
   const { trackEvent } = useAnalytics();
 
-  const isDiscountVisible = (reductionPercent: number) =>
-    reductionPercent > 0 &&
-    (maxDiscountPercent == null || reductionPercent <= maxDiscountPercent);
+  const isDiscountVisible = useDiscountVisibility();
 
   // Required accessory lines belong to their parent: they are never the line
   // this modal edits.
@@ -408,6 +406,9 @@ export function ProductModal({
   const originalPrice = priceResult.originalSubtotal;
   const savings = priceResult.savings;
   const discountPercent = priceResult.discountPercent;
+  // A markdown above the store cap is shown as the plain price.
+  const showSavings =
+    savings > 0 && isDiscountVisible(getEffectiveDiscountPercent(priceResult));
 
   // Detect which seasonal pricing (if any) applies to the selected dates.
   // Used to show seasonal-adjusted rates in the Tarifs section so displayed
@@ -1617,7 +1618,7 @@ export function ProductModal({
                   )
                 </span>
                 <div className="mt-0.5 flex items-baseline gap-2">
-                  {savings > 0 && (
+                  {showSavings && (
                     <span className="text-muted-foreground text-sm line-through">
                       {formatCurrency(originalPrice, currency)}
                     </span>
@@ -1628,7 +1629,7 @@ export function ProductModal({
                 </div>
               </div>
 
-              {savings > 0 && discountPercent && isDiscountVisible(discountPercent) && (
+              {showSavings && discountPercent != null && (
                 <Badge variant="progress" className="px-3 py-1 text-sm font-semibold">
                   <TrendingDownSolidIcon className="mr-1 h-3.5 w-3.5" />-
                   {Math.floor(discountPercent)}%

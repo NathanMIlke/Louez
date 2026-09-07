@@ -1,7 +1,8 @@
 'use client'
 
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, type ReactNode } from 'react'
 import { setStorefrontSlug } from '@/lib/orpc/client'
+import { isDiscountDisplayable } from '@/lib/utils/discount-visibility'
 
 interface StoreContextValue {
   storeId: string
@@ -68,4 +69,18 @@ export function useStoreTimezone(): string | undefined {
 export function useStoreMaxDiscountPercent(): number | null | undefined {
   const context = useContext(StoreContext)
   return context?.maxDiscountPercent
+}
+
+/**
+ * Predicate for every storefront surface that advertises a markdown: badge,
+ * strikethrough, discount row, "you save" line. Bound to the store's cap so
+ * callers only pass the percentage they are about to show.
+ */
+export function useDiscountVisibility(): (reductionPercent: number | null | undefined) => boolean {
+  const maxDiscountPercent = useStoreMaxDiscountPercent()
+  return useCallback(
+    (reductionPercent: number | null | undefined) =>
+      isDiscountDisplayable(reductionPercent, maxDiscountPercent),
+    [maxDiscountPercent],
+  )
 }

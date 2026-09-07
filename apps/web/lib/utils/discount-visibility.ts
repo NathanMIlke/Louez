@@ -1,0 +1,65 @@
+import type { CartItemPriceResult } from "@/lib/utils/cart-pricing";
+
+/**
+ * The store can cap the discount percentage it is willing to advertise.
+ * Above that cap, the storefront shows the discounted price as the plain
+ * price: no badge, no strikethrough, no "you save" line. Shoppers who see a
+ * huge markdown tend to distrust the price rather than celebrate it.
+ *
+ * `maxDiscountPercent` is null/undefined when the cap is disabled.
+ */
+export function isDiscountDisplayable(
+  reductionPercent: number | null | undefined,
+  maxDiscountPercent: number | null | undefined,
+): boolean {
+  if (reductionPercent == null || reductionPercent <= 0) return false;
+  return maxDiscountPercent == null || reductionPercent <= maxDiscountPercent;
+}
+
+/**
+ * Percentage actually applied to a priced line. Pricing paths that don't
+ * carry a tier percentage (fixed price, rate grids) still expose savings, so
+ * the ratio is derived from the amounts when the explicit value is missing.
+ */
+export function getEffectiveDiscountPercent(
+  priceResult: Pick<CartItemPriceResult, "savings" | "originalSubtotal" | "discountPercent">,
+): number {
+  if (priceResult.discountPercent != null) return priceResult.discountPercent;
+  if (priceResult.savings <= 0 || priceResult.originalSubtotal <= 0) return 0;
+  return (priceResult.savings / priceResult.originalSubtotal) * 100;
+}
+
+export interface DisplayableSavings {
+  /** Sum of the savings the store is willing to advertise. */
+  savings: number;
+  /** Subtotal before those advertised savings only; hidden ones stay folded into the price. */
+  originalSubtotal: number;
+}
+
+/**
+ * Cart-level totals for the summary blocks. A line whose discount exceeds the
+ * cap contributes its discounted price as if it were the list price, so the
+ * "subtotal / discount / you save" rows never reveal a hidden markdown.
+ */
+export function getDisplayableSavings(
+  priceResults: Pick<
+    CartItemPriceResult,
+    "subtotal" | "savings" | "originalSubtotal" | "discountPercent"
+  >[],
+  maxDiscountPercent: number | null | undefined,
+): DisplayableSavings {
+  return priceResults.reduce<DisplayableSavings>(
+    (acc, result) => {
+      const displayable = isDiscountDisplayable(
+        getEffectiveDiscountPercent(result),
+        maxDiscountPercent,
+      );
+      return {
+        savings: acc.savings + (displayable ? result.savings : 0),
+        originalSubtotal:
+          acc.originalSubtotal + (displayable ? result.originalSubtotal : result.subtotal),
+      };
+    },
+    { savings: 0, originalSubtotal: 0 },
+  );
+}

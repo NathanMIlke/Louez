@@ -25,7 +25,7 @@ import { useFormatLocale } from '@/hooks/use-format-locale';
 
 import { getDetailedDuration } from '@/lib/utils/duration';
 import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
-import { getEffectiveDiscountPercent } from '@/lib/utils/discount-visibility';
+import { getEffectiveDiscountPercent } from '@/lib/utils/util.discount-visibility';
 import { groupCartLinesByParent } from '@/lib/utils/cart-required-accessories';
 
 import type { CartItem } from '@/contexts/cart-context';

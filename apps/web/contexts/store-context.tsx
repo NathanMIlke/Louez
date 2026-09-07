@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, type ReactNode } from 'react'
 import { setStorefrontSlug } from '@/lib/orpc/client'
-import { isDiscountDisplayable } from '@/lib/utils/discount-visibility'
+import { isDiscountDisplayable } from '@/lib/utils/util.discount-visibility'
 
 interface StoreContextValue {
   storeId: string

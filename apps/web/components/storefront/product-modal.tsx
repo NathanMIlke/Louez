@@ -60,7 +60,7 @@ import {
   getDetailedDuration,
 } from '@/lib/utils/duration';
 import { pickActiveVariantAttributes } from '@/lib/util.variant-visibility';
-import { getEffectiveDiscountPercent } from '@/lib/utils/discount-visibility';
+import { getEffectiveDiscountPercent } from '@/lib/utils/util.discount-visibility';
 import {
   buildRequiredAccessoryCartInputs,
   findBlockingRequiredAccessories,

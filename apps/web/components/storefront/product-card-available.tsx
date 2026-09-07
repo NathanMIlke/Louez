@@ -38,7 +38,7 @@ import {
   findBlockingRequiredAccessories,
   selectOptionalAccessories,
 } from '@/lib/utils/cart-required-accessories';
-import { getEffectiveDiscountPercent } from '@/lib/utils/discount-visibility';
+import { getEffectiveDiscountPercent } from '@/lib/utils/util.discount-visibility';
 import { calculateDuration, getDetailedDuration } from '@/lib/utils/duration';
 
 import { useCart } from '@/contexts/cart-context';

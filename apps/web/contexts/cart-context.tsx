@@ -23,7 +23,7 @@ import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
 import {
   type DisplayableSavings,
   getDisplayableSavings,
-} from '@/lib/utils/discount-visibility';
+} from '@/lib/utils/util.discount-visibility';
 import { useStoreMaxDiscountPercent } from '@/contexts/store-context';
 import {
   clampCartLineQuantityToAvailableMaximum,

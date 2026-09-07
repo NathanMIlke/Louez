@@ -66,7 +66,7 @@ import {
   findBlockingRequiredAccessories,
   selectOptionalAccessories,
 } from '@/lib/utils/cart-required-accessories';
-import { getEffectiveDiscountPercent } from '@/lib/utils/discount-visibility';
+import { getEffectiveDiscountPercent } from '@/lib/utils/util.discount-visibility';
 import { getMinStartDate } from '@/lib/utils/duration';
 import {
   formatDurationFromMinutes,

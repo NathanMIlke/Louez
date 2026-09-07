@@ -6165,6 +6165,7 @@
       "requestMode": "Complete your information to submit your reservation request",
       "customerInfo": "Your information",
       "summary": "Your order",
+      "dayAbbreviation": "d",
       "steps": {
         "contact": "Contact",
         "delivery": "Delivery",

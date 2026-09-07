@@ -1,5 +1,7 @@
 "use server";
 
+import { isLocale } from "@/lib/i18n/format-locale";
+
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -1797,6 +1799,7 @@ export async function createReservation(input: CreateReservationInput) {
         storeId: input.storeId,
         customerId: customer.id,
         number: reservationNumber,
+        locale: input.locale && isLocale(input.locale) ? input.locale : null,
         status: "pending",
         startDate,
         endDate,

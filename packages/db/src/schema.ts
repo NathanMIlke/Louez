@@ -1227,6 +1227,8 @@ export const reservations = mysqlTable(
     storeId: varchar("store_id", { length: 21 }).notNull(),
     customerId: varchar("customer_id", { length: 21 }).notNull(),
 
+    locale: varchar("locale", { length: 10 }),
+
     // Reservation number (auto-incremented per store)
     number: varchar("number", { length: 50 }).notNull(),
 

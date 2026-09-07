@@ -14,6 +14,7 @@ import plEmails from '@/messages/emails/pl.json'
 import ptEmails from '@/messages/emails/pt.json'
 
 import type { EmailLocale } from '@louez/email'
+import { isLocale } from '@/lib/i18n/format-locale'
 import { resolveFormatLocale } from '@/lib/i18n/format-locale'
 export type { EmailLocale }
 
@@ -179,3 +180,12 @@ export function getCurrencyFormatter(locale: EmailLocale = 'fr', currency: strin
  * Default locale for emails
  */
 export const defaultEmailLocale: EmailLocale = 'fr'
+
+export function resolveReservationEmailLocale(
+  reservationLocale: string | null | undefined,
+  storeCountry: string | null | undefined,
+): EmailLocale {
+  return reservationLocale && isLocale(reservationLocale)
+    ? reservationLocale
+    : getLocaleFromCountry(storeCountry)
+}

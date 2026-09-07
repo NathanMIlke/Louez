@@ -6165,6 +6165,7 @@
       "requestMode": "Vul uw gegevens in om uw reserveringsaanvraag in te dienen",
       "customerInfo": "Uw gegevens",
       "summary": "Uw bestelling",
+      "dayAbbreviation": "d",
       "steps": {
         "contact": "Contact",
         "delivery": "Bezorging",
@@ -6988,7 +6989,7 @@
       "fullCgvAnnex": "Bijlage - Volledige huurvoorwaarden"
     },
     "parties": {
-      "landlord": "Verhuurder",
+      "landlord": "Organisation",
       "customer": "Klant",
       "contact": "Contact"
     },

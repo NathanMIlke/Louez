@@ -1,3 +1,4 @@
+import { isLocale } from '@/lib/i18n/format-locale'
 import { NextResponse } from 'next/server'
 import { db } from '@louez/db'
 import { reservations, stores } from '@louez/db'
@@ -25,8 +26,7 @@ function getPreferredLocale(acceptLanguage: string | null): SupportedLocale {
 
   // Find first supported language
   for (const { code } of languages) {
-    if (code === 'en') return 'en'
-    if (code === 'fr') return 'fr'
+    if (code && isLocale(code)) return code
   }
 
   return 'fr' // Default to French if no supported language found
@@ -85,8 +85,10 @@ export async function GET(
   const langParam = url.searchParams.get('lang')
 
   let locale: SupportedLocale
-  if (langParam === 'en' || langParam === 'fr') {
+  if (langParam && isLocale(langParam)) {
     locale = langParam
+  } else if (reservation.locale && isLocale(reservation.locale)) {
+    locale = reservation.locale
   } else {
     const acceptLanguage = request.headers.get('Accept-Language')
     locale = getPreferredLocale(acceptLanguage)

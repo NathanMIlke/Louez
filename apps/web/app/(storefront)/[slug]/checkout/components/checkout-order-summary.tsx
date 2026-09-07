@@ -155,8 +155,8 @@ export function CheckoutOrderSummary({
     }
 
     if (days === 0) return `${hours}h`;
-    if (hours === 0) return `${days}j`;
-    return `${days}j ${hours}h`;
+    if (hours === 0) return `${days}${t('dayAbbreviation')}`;
+    return `${days}${t('dayAbbreviation')} ${hours}h`;
   })();
 
   return (

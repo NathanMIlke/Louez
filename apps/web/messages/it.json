@@ -6165,6 +6165,7 @@
       "requestMode": "Completa le tue informazioni per inviare la tua richiesta di prenotazione",
       "customerInfo": "Le tue informazioni",
       "summary": "Il tuo ordine",
+      "dayAbbreviation": "g",
       "steps": {
         "contact": "Contatto",
         "delivery": "Consegna",

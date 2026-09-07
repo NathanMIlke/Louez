@@ -10,6 +10,13 @@ import { getLogoForLightBackground } from '@louez/utils'
 // Import translations
 import frMessages from '@/messages/fr.json'
 import enMessages from '@/messages/en.json'
+import nlMessages from '@/messages/nl.json'
+import deMessages from '@/messages/de.json'
+import esMessages from '@/messages/es.json'
+import itMessages from '@/messages/it.json'
+import ptMessages from '@/messages/pt.json'
+import plMessages from '@/messages/pl.json'
+import { isLocale } from '@/lib/i18n/format-locale'
 
 interface GenerateContractOptions {
   reservationId: string
@@ -19,8 +26,11 @@ interface GenerateContractOptions {
 
 // Get translations for the specified locale
 function getTranslations(locale: SupportedLocale): ContractTranslations {
-  const messages = locale === 'fr' ? frMessages : enMessages
-  return messages.contract as ContractTranslations
+  const messages = {
+    fr: frMessages, en: enMessages, nl: nlMessages, de: deMessages,
+    es: esMessages, it: itMessages, pt: ptMessages, pl: plMessages,
+  }[locale]
+  return messages.contract
 }
 
 function toNonEmptyString(value: string | null | undefined): string | null {
@@ -34,7 +44,7 @@ function toNonEmptyString(value: string | null | undefined): string | null {
 export async function generateContract({
   reservationId,
   regenerate = false,
-  locale = 'fr'
+  locale: requestedLocale
 }: GenerateContractOptions) {
   // Get reservation with all relations including payments and assigned units
   const reservation = await db.query.reservations.findFirst({
@@ -53,6 +63,8 @@ export async function generateContract({
   if (!reservation) {
     throw new Error('Reservation not found')
   }
+
+  const locale = requestedLocale ?? (reservation.locale && isLocale(reservation.locale) ? reservation.locale : 'fr')
 
   // Get store
   const store = await db.query.stores.findFirst({

@@ -1,3 +1,4 @@
+import type { Locale } from "@/i18n/config";
 import type { ComponentType, PropsWithChildren } from "react";
 import {
   Document as BaseDocument,
@@ -108,7 +109,7 @@ export interface ContractTranslations {
   };
 }
 
-export type SupportedLocale = "fr" | "en";
+export type SupportedLocale = Locale;
 
 interface BillingAddress {
   useSameAsStore: boolean;

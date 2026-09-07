@@ -2,10 +2,13 @@
  * Customer Notification Dispatcher
  *
  * Handles sending notifications (email/SMS) to customers based on store preferences.
- * Respects customer notification settings and uses the store's country-based locale.
+ * Respects customer notification settings and uses the language saved with the reservation.
  */
 
-import { getLocaleFromCountry, type EmailLocale } from "@/lib/email/i18n";
+import { db, reservations } from "@louez/db";
+import { and, eq } from "drizzle-orm";
+
+import { resolveReservationEmailLocale, type EmailLocale } from "@/lib/email/i18n";
 import {
   sendRequestReceivedEmail,
   sendRequestAcceptedEmail,
@@ -136,13 +139,6 @@ export interface CustomerNotificationResult {
 }
 
 /**
- * Get the notification locale based on store's country
- */
-function getNotificationLocale(store: CustomerNotificationStore): EmailLocale {
-  return getLocaleFromCountry(store.settings?.country);
-}
-
-/**
  * Merge custom template with legacy emailSettings for backward compatibility
  */
 function mergeTemplateWithLegacy(
@@ -208,8 +204,11 @@ export async function dispatchCustomerNotification(
     return result;
   }
 
-  // Determine locale from store country
-  const locale = getNotificationLocale(ctx.store);
+  const reservation = await db.query.reservations.findFirst({
+    where: and(eq(reservations.id, ctx.reservation.id), eq(reservations.storeId, ctx.store.id)),
+    columns: { locale: true },
+  });
+  const locale = resolveReservationEmailLocale(reservation?.locale, ctx.store.settings?.country);
 
   // Get custom template if any, with backward compatibility
   const customTemplate = settings.templates?.[eventType];

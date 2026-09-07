@@ -5,7 +5,7 @@ import {
   getDisplayableSavings,
   getEffectiveDiscountPercent,
   isDiscountDisplayable,
-} from "./discount-visibility";
+} from "./util.discount-visibility";
 
 describe("isDiscountDisplayable", () => {
   test("hides a missing or zero discount", () => {

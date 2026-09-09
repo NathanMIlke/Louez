@@ -877,7 +877,7 @@ export function AddToCartForm({
           <Separator />
           <div className="flex justify-between font-semibold">
             <span>{t('total')}</span>
-            <span>{formatCurrency(subtotal + totalDeposit, currency)}</span>
+            <span>{formatCurrency(subtotal, currency)}</span>
           </div>
           {showSavings && (
             <div className="pt-1 text-center text-xs text-green-600">

@@ -8,7 +8,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema.ts",
-    "./env": "./src/env.ts"
+    "./env": "./src/env.ts",
+    "./postgres": "./src/postgres.ts",
+    "./postgres-schema": "./src/postgres-schema.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
@@ -30,6 +32,7 @@
     "drizzle-orm": "^0.45.2",
     "mysql2": "^3.16.0",
     "nanoid": "^5.1.6",
+    "postgres": "^3.4.9",
     "zod": "^4.3.5"
   },
   "devDependencies": {

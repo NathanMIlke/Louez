@@ -44,8 +44,17 @@ import { StoreProvider } from "@/contexts/store-context";
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
 export const instant = false;
 
-/** Visible LocaCamera release marker so deployed updates can be confirmed at a glance. */
-const LOCACAMERA_APP_VERSION = "1.0.0";
+/**
+ * Visible LocaCamera release marker. Railway injects a fresh build identifier
+ * on every deployment, so this value changes automatically after each update.
+ */
+const LOCACAMERA_APP_VERSION = (() => {
+  const buildVersion = process.env.NEXT_PUBLIC_APP_VERSION;
+  if (!buildVersion) return "1.0.0-dev";
+  return buildVersion.startsWith("build-")
+    ? `1.0.${buildVersion.slice("build-".length)}`
+    : buildVersion;
+})();
 
 /** Total balance under which the sidebar shows its low-credit marker. */
 const LOW_AI_CREDITS_THRESHOLD = 5;

@@ -239,6 +239,17 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                 <PhoneContactPopover phone={customer.phone} className="text-foreground" />
               </div>
             )}
+            {locacameraProfile?.backupContact && (
+              <div className="flex items-start gap-3 rounded-md border p-3">
+                <Phone className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                <div className="min-w-0">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Contato de backup
+                  </div>
+                  <div className="break-words">{locacameraProfile.backupContact}</div>
+                </div>
+              </div>
+            )}
             {instagramHandle && (
               <div className="flex items-center gap-3">
                 <Instagram className="h-4 w-4 text-muted-foreground" />

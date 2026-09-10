@@ -1,6 +1,6 @@
 import { db } from '@louez/db'
 import { getCurrentStore } from '@/lib/store-context'
-import { customers } from '@louez/db'
+import { customers, locacameraCustomerProfiles } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -40,6 +40,17 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
     notFound()
   }
 
+  const [locacameraProfile] = await db
+    .select()
+    .from(locacameraCustomerProfiles)
+    .where(
+      and(
+        eq(locacameraCustomerProfiles.customerId, customer.id),
+        eq(locacameraCustomerProfiles.storeId, store.id),
+      ),
+    )
+    .limit(1)
+
   const customerBreadcrumbLabel =
     customer.customerType === 'business' && customer.companyName
       ? customer.companyName
@@ -66,7 +77,15 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
         </div>
       </div>
 
-      <CustomerForm customer={customer} />
+      <CustomerForm
+        customer={{
+          ...customer,
+          instagram: locacameraProfile?.instagram ?? null,
+          acquisitionSource: locacameraProfile?.acquisitionSource ?? null,
+          registeredAt: locacameraProfile?.registeredAt ?? customer.createdAt,
+          pinnedFiles: locacameraProfile?.pinnedFiles ?? null,
+        }}
+      />
     </div>
   )
 }

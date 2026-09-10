@@ -108,6 +108,12 @@ const mainNavigation = [
   { key: "home", href: "/dashboard", icon: HomeGlassIcon },
   { key: "reservations", href: "/dashboard/reservations", icon: ReservationsGlassIcon },
   { key: "customers", href: "/dashboard/customers", icon: CustomersGlassIcon },
+  {
+    key: "financeiro",
+    label: "Financeiro",
+    href: "/dashboard/financeiro",
+    icon: AnalyticsGlassIcon,
+  },
 ];
 
 /** What the assistant produces first, then what configures it. */
@@ -153,6 +159,7 @@ interface NavigationSubItem {
 
 interface NavigationItem {
   key: string;
+  label?: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   /** Path the active state is derived from, when it is wider than `href`. */
@@ -269,6 +276,7 @@ const NavSubItemBadge = ({ alert, badgeCount }: { alert?: boolean; badgeCount?: 
 const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: string }) => {
   const t = useTranslations("dashboard.navigation");
   const tSidebar = useTranslations("dashboard.sidebar");
+  const itemLabel = item.label ?? t(item.key);
   // A sub-entry can sit outside the parent's path (the AI wallet lives at
   // `/dashboard/ai-credits`), so the section counts as yours whenever any of
   // its rows is — otherwise the tree would close over the current page.
@@ -290,11 +298,11 @@ const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: 
       isActive={active && !openSection}
       /* A section swaps its tooltip for the flyout below, which names it and
          lists it in one surface — two hover popups on one icon would race. */
-      tooltip={item.items?.length ? undefined : t(item.key)}
+      tooltip={item.items?.length ? undefined : itemLabel}
       className={cn(openSection && "text-sidebar-accent-foreground")}
     >
       <item.icon />
-      <span>{t(item.key)}</span>
+      <span>{itemLabel}</span>
     </SidebarMenuButton>
   );
 
@@ -311,7 +319,7 @@ const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: 
           <PreviewCardPopup side="right" align="start" sideOffset={8} className="w-48 p-1">
             <div className="flex w-full min-w-0 flex-col gap-1">
               <span className="text-muted-foreground px-2 py-1.5 text-xs font-medium">
-                {t(item.key)}
+                {itemLabel}
               </span>
               {item.items.map((subItem) => (
                 <SidebarLink

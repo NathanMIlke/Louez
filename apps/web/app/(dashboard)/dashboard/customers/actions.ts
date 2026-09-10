@@ -16,6 +16,8 @@ import { notifyCustomerCreated } from '@/lib/discord/platform-notifications'
 
 type LocaCameraCustomerInput = CustomerInput & {
   cpfCnpj?: string | null
+  birthday?: string | Date | null
+  gender?: string | null
   instagram?: string | null
   acquisitionSource?: string | null
   registeredAt?: string | Date | null
@@ -87,7 +89,7 @@ function normalizedPinnedFiles(value: unknown) {
   return unique.length > 0 ? unique.join('\n') : null
 }
 
-function normalizedRegistrationDate(value: unknown) {
+function normalizedDate(value: unknown) {
   if (value instanceof Date) {
     return Number.isNaN(value.getTime()) ? null : value
   }
@@ -108,9 +110,11 @@ async function saveLocaCameraCustomerProfile(
   data: LocaCameraCustomerInput,
 ) {
   const cpfCnpj = normalizedDocument(data.cpfCnpj)
+  const birthday = normalizedDate(data.birthday)
+  const gender = nullableText(data.gender, 32)
   const instagram = normalizedInstagram(data.instagram)
   const acquisitionSource = nullableText(data.acquisitionSource)
-  const registeredAt = normalizedRegistrationDate(data.registeredAt)
+  const registeredAt = normalizedDate(data.registeredAt)
   const backupContact = nullableText(data.backupContact)
   const pinnedFiles = normalizedPinnedFiles(data.pinnedFiles)
 
@@ -130,6 +134,9 @@ async function saveLocaCameraCustomerProfile(
       .update(locacameraCustomerProfiles)
       .set({
         cpfCnpj,
+        birthday,
+        gender,
+        genderName: gender,
         instagram,
         acquisitionSource,
         registeredAt,
@@ -145,6 +152,9 @@ async function saveLocaCameraCustomerProfile(
     customerId,
     storeId,
     cpfCnpj,
+    birthday,
+    gender,
+    genderName: gender,
     instagram,
     acquisitionSource,
     registeredAt,

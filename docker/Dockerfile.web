@@ -104,9 +104,11 @@ ENV DATABASE_URL=${DATABASE_URL}
 # or registry failure, having nothing to do with the code being built.
 COPY --from=deps /root/.cache/node/corepack /root/.cache/node/corepack
 
-# Build the application using Turborepo. CI supplies the commit SHA; direct
-# EasyPanel builds fall back to a unique build identifier without manual input.
-RUN corepack enable pnpm && \
+# Build the application using Turborepo. Persist Next.js' build cache between
+# Railway builds so successive changes can reuse compiler work instead of
+# starting from a cold .next/cache every time.
+RUN --mount=type=cache,id=s/6f149086-583f-45ac-95b7-49dd5e3a9af9-/app/apps/web/.next/cache,target=/app/apps/web/.next/cache \
+    corepack enable pnpm && \
     APP_VERSION="${NEXT_PUBLIC_APP_VERSION:-build-$(date -u +%Y%m%d%H%M%S)}" && \
     NEXT_PUBLIC_APP_VERSION="${APP_VERSION}" pnpm turbo run build --filter=@louez/web --env-mode=loose
 

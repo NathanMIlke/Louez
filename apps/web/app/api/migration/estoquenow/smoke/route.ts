@@ -2,7 +2,14 @@ import { createHash } from "crypto";
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 
-import { categories, customers, db, productCategories, products } from "@louez/db";
+import {
+  categories,
+  customers,
+  db,
+  locacameraCustomerProfiles,
+  productCategories,
+  products,
+} from "@louez/db";
 import { currentUserHasPermission, getCurrentStore } from "@/lib/store-context";
 
 const ESTOQUENOW_API = "https://api.estoquenow.com.br/v1";
@@ -25,6 +32,9 @@ type NormalizedCustomer = {
   postalCode: string | null;
   country: string;
   notes: string | null;
+  instagram: string | null;
+  acquisitionSource: string | null;
+  pinnedFiles: string | null;
   createdAt: Date | null;
 };
 
@@ -120,6 +130,34 @@ function sourceProductId(item: SourceRecord, index: number): string {
   return text(item?.id ?? item?.inventory_id ?? item?.item_id ?? item?.product_id) || `smoke-product-${index + 1}`;
 }
 
+function observationValue(notes: string, label: string): string {
+  if (!notes) return "";
+  const normalizedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = notes.match(new RegExp(`(?:^|\\n)\\s*${normalizedLabel}\\s*:\\s*(.+?)\\s*(?=\\n|$)`, "i"));
+  return text(match?.[1]);
+}
+
+function normalizeInstagram(value: unknown): string {
+  return text(value)
+    .replace(/^https?:\/\/(?:www\.)?instagram\.com\//i, "")
+    .replace(/^@/, "")
+    .replace(/\?.*$/, "")
+    .replace(/\/+$/, "")
+    .trim();
+}
+
+function normalizePinnedFiles(value: unknown): string | null {
+  const flattened = Array.isArray(value)
+    ? value.map((item) => text(item?.url ?? item?.reference ?? item?.id ?? item)).filter(Boolean)
+    : text(value)
+        .split(/\r?\n|\s*[,;]\s*/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+  const unique = Array.from(new Set(flattened));
+  return unique.length ? unique.join("\n") : null;
+}
+
 function normalizeCustomer(item: SourceRecord, index: number): NormalizedCustomer {
   const legacyId = sourceClientId(item, index);
   const document = digits(
@@ -142,6 +180,27 @@ function normalizeCustomer(item: SourceRecord, index: number): NormalizedCustome
   const address = [street, number, complement, neighborhood].filter(Boolean).join(", ");
   const sourceNotes = text(
     item?.observations ?? item?.observation ?? item?.notes ?? item?.comments ?? item?.details,
+  );
+  const instagram = normalizeInstagram(
+    item?.instagram_username ??
+      item?.instagram ??
+      item?.social_instagram ??
+      observationValue(sourceNotes, "Instagram"),
+  );
+  const acquisitionSource = text(
+    item?.acquisition_source ??
+      item?.how_did_you_hear ??
+      item?.origin ??
+      item?.origem ??
+      observationValue(sourceNotes, "Como conheceu a loja"),
+  );
+  const pinnedFiles = normalizePinnedFiles(
+    item?.documents_reference ??
+      item?.document_reference ??
+      item?.documentos_referencia ??
+      item?.file_reference ??
+      item?.files ??
+      observationValue(sourceNotes, "Referência dos documentos"),
   );
   const migrationNotes = [
     `Migrado do EstoqueNow #${legacyId}`,
@@ -167,6 +226,9 @@ function normalizeCustomer(item: SourceRecord, index: number): NormalizedCustome
     postalCode: digits(item?.address_zipcode ?? item?.zipcode ?? item?.zip_code ?? item?.address?.zipcode ?? item?.address?.cep) || null,
     country: "BR",
     notes: migrationNotes || null,
+    instagram: instagram || null,
+    acquisitionSource: acquisitionSource || null,
+    pinnedFiles,
     createdAt: parseDate(item?.created_at ?? item?.createdAt ?? item?.date_created),
   };
 }
@@ -274,6 +336,41 @@ async function uniqueCustomerEmail(storeId: string, customerId: string, normaliz
   return `estoquenow-${normalized.legacyId.replace(/[^a-zA-Z0-9]/g, "-")}@migration.locacamera.invalid`;
 }
 
+async function saveLocaCameraProfile(storeId: string, customerId: string, customer: NormalizedCustomer) {
+  const [existing] = await db
+    .select({ customerId: locacameraCustomerProfiles.customerId })
+    .from(locacameraCustomerProfiles)
+    .where(
+      and(
+        eq(locacameraCustomerProfiles.customerId, customerId),
+        eq(locacameraCustomerProfiles.storeId, storeId),
+      ),
+    )
+    .limit(1);
+
+  const values = {
+    storeId,
+    estoqueNowClientId: customer.legacyId,
+    instagram: customer.instagram,
+    acquisitionSource: customer.acquisitionSource,
+    registeredAt: customer.createdAt,
+    pinnedFiles: customer.pinnedFiles,
+    updatedAt: new Date(),
+  };
+
+  if (existing) {
+    await db
+      .update(locacameraCustomerProfiles)
+      .set(values)
+      .where(eq(locacameraCustomerProfiles.customerId, customerId));
+  } else {
+    await db.insert(locacameraCustomerProfiles).values({
+      customerId,
+      ...values,
+    });
+  }
+}
+
 async function importCustomers(storeId: string, input: NormalizedCustomer[]) {
   const result: Array<{ legacyId: string; louezId: string; name: string; action: "created" | "updated" }> = [];
 
@@ -307,6 +404,8 @@ async function importCustomers(storeId: string, input: NormalizedCustomer[]) {
     } else {
       await db.insert(customers).values({ id, ...values });
     }
+
+    await saveLocaCameraProfile(storeId, id, customer);
 
     result.push({
       legacyId: customer.legacyId,
@@ -401,7 +500,11 @@ function previewPayload(sample: Awaited<ReturnType<typeof extractSmokeSample>>) 
   return {
     customers: sample.customers.map(({ legacyId, originalEmail, createdAt, ...customer }) => ({
       source: { system: "EstoqueNow", id: legacyId, originalEmail: originalEmail || null },
-      louez: { ...customer, createdAt: createdAt?.toISOString() ?? null },
+      louez: {
+        ...customer,
+        registeredAt: createdAt?.toISOString() ?? null,
+        createdAt: createdAt?.toISOString() ?? null,
+      },
     })),
     products: sample.products.map(({ legacyId, categoryLegacyId, sourceImages, createdAt, ...product }) => ({
       source: { system: "EstoqueNow", id: legacyId, categoryId: categoryLegacyId || null, imageUrls: sourceImages },
@@ -466,6 +569,7 @@ export async function POST() {
       products: importedProducts,
       notes: [
         "IDs do Louez são determinísticos a partir do ID do EstoqueNow, portanto o teste pode ser repetido sem duplicar estes registros.",
+        "Instagram, origem, data de cadastro e referências de arquivos são preservados no perfil LocaCamera do cliente.",
         "Imagens externas ficaram apenas na prévia de origem neste primeiro teste; a migração definitiva copiará os arquivos para o storage do Louez.",
       ],
     });

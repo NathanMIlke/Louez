@@ -35,6 +35,7 @@ export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 // Re-export schema for convenience
 export * from './schema'
 export * from './locacamera'
+export * from './locacamera-inventory'
 export {
   activeProductUnitCountSql,
   effectiveProductQuantitySql,

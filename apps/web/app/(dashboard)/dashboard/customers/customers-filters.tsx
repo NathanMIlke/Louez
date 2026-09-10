@@ -9,7 +9,7 @@ import { Plus, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useDebouncedCallback } from 'use-debounce';
 
-import { Button } from '@louez/ui';
+import { Button, Input } from '@louez/ui';
 import {
   Select,
   SelectContent,
@@ -33,6 +33,8 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
   const currentType = searchParams.get('type') || 'all';
   const currentSort = searchParams.get('sort') || 'recent';
   const currentSearch = searchParams.get('search') || '';
+  const currentCreatedFrom = searchParams.get('createdFrom') || '';
+  const currentCreatedTo = searchParams.get('createdTo') || '';
   const [searchQuery, setSearchQuery] = useState(currentSearch);
 
   useEffect(() => {
@@ -98,6 +100,19 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
     router.push(`?${params.toString()}`);
   };
 
+  const handleCreatedDateChange = (
+    key: 'createdFrom' | 'createdTo',
+    value: string,
+  ) => {
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    router.push(`?${params.toString()}`);
+  };
+
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-muted-foreground flex items-center gap-2">
@@ -107,7 +122,7 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
         </span>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
         <div className="relative">
           <SearchInput
             placeholder={t('searchCustomers')}
@@ -116,6 +131,35 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
             onChange={(event) => updateSearchQuery(event.target.value)}
             onClear={clearSearchQuery}
             clearLabel={t('clearSearch')}
+          />
+        </div>
+
+        <div className="grid grid-cols-[auto_1fr] items-center gap-2 sm:flex">
+          <span className="text-muted-foreground whitespace-nowrap text-xs">
+            {t('customerSince')}
+          </span>
+          <Input
+            type="date"
+            value={currentCreatedFrom}
+            max={currentCreatedTo || undefined}
+            onChange={(event) =>
+              handleCreatedDateChange('createdFrom', event.target.value)
+            }
+            aria-label={`${t('customerSince')} ${tCommon('from')}`}
+            className="w-full sm:w-[145px]"
+          />
+          <span className="text-muted-foreground whitespace-nowrap text-xs">
+            {tCommon('to')}
+          </span>
+          <Input
+            type="date"
+            value={currentCreatedTo}
+            min={currentCreatedFrom || undefined}
+            onChange={(event) =>
+              handleCreatedDateChange('createdTo', event.target.value)
+            }
+            aria-label={`${t('customerSince')} ${tCommon('to')}`}
+            className="w-full sm:w-[145px]"
           />
         </div>
 

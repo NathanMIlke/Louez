@@ -33,6 +33,8 @@ export function CustomersPageContent({
   const search = searchParams.get('search') || undefined
   const sort = searchParams.get('sort')
   const type = searchParams.get('type')
+  const createdFrom = searchParams.get('createdFrom') || undefined
+  const createdTo = searchParams.get('createdTo') || undefined
 
   const customersQuery = useQuery({
     ...orpc.dashboard.customers.list.queryOptions({
@@ -49,6 +51,8 @@ export function CustomersPageContent({
           type === 'all' || type === 'individual' || type === 'business'
             ? type
             : undefined,
+        createdFrom,
+        createdTo,
       },
     }),
     placeholderData: (previousData) => previousData,

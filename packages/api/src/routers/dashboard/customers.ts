@@ -4,10 +4,14 @@ import { z } from 'zod';
 
 import { dashboardProcedure } from '../../procedures';
 
+const customerDateFilterSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
 const listInputSchema = z.object({
   search: z.string().optional(),
   sort: z.enum(['recent', 'name', 'reservations', 'spent']).optional(),
   type: z.enum(['all', 'individual', 'business']).optional(),
+  createdFrom: customerDateFilterSchema.optional(),
+  createdTo: customerDateFilterSchema.optional(),
 });
 
 const list = dashboardProcedure
@@ -30,6 +34,18 @@ const list = dashboardProcedure
 
     if (input.type === 'individual' || input.type === 'business') {
       conditions.push(eq(customers.customerType, input.type));
+    }
+
+    if (input.createdFrom) {
+      conditions.push(
+        sql`${customers.createdAt} >= ${`${input.createdFrom} 00:00:00`}`,
+      );
+    }
+
+    if (input.createdTo) {
+      conditions.push(
+        sql`${customers.createdAt} < DATE_ADD(${`${input.createdTo} 00:00:00`}, INTERVAL 1 DAY)`,
+      );
     }
 
     const whereClause = and(...conditions)!;

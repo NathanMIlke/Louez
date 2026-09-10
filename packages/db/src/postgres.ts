@@ -31,3 +31,12 @@ if (process.env.NODE_ENV !== "production") {
 export const pgDb = drizzle({ client, schema });
 export type PostgresDatabase = typeof pgDb;
 export * from "./postgres-schema";
+export {
+  BLOCKING_RESERVATION_STATUSES,
+  buildReservationOverlapPredicate,
+  buildUnitInDowntimeAtPredicate,
+  buildUnitRentableDuringPredicate,
+  findBusyUnitIds,
+  getBlockingReservationStatuses,
+} from "./postgres-unit-availability";
+export type { BlockingReservationStatus, BusyUnitReason } from "./postgres-unit-availability";

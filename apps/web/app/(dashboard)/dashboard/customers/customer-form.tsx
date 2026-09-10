@@ -49,6 +49,7 @@ interface Customer {
   postalCode: string | null
   country: string | null
   notes: string | null
+  cpfCnpj?: string | null
   instagram?: string | null
   acquisitionSource?: string | null
   registeredAt?: Date | string | null
@@ -72,6 +73,10 @@ function dateInputValue(value: Date | string | null | undefined) {
   const month = String(date.getUTCMonth() + 1).padStart(2, '0')
   const day = String(date.getUTCDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function documentInputValue(value: string | null | undefined) {
+  return value?.replace(/\D/g, '').slice(0, 14) ?? ''
 }
 
 export function CustomerForm({
@@ -111,6 +116,7 @@ export function CustomerForm({
       postalCode: customer?.postalCode || undefined,
       country: customer?.country || 'BR',
       notes: customer?.notes || undefined,
+      cpfCnpj: documentInputValue(customer?.cpfCnpj) || undefined,
       instagram: customer?.instagram || undefined,
       acquisitionSource: customer?.acquisitionSource || undefined,
       registeredAt: dateInputValue(customer?.registeredAt) || undefined,
@@ -129,6 +135,7 @@ export function CustomerForm({
 
       const payload = {
         ...validation.data,
+        cpfCnpj: value.cpfCnpj || undefined,
         instagram: value.instagram || undefined,
         acquisitionSource: value.acquisitionSource || undefined,
         registeredAt: value.registeredAt || undefined,
@@ -294,6 +301,7 @@ export function CustomerForm({
                     <PhoneInput
                       value={field.state.value || ''}
                       onChange={field.handleChange}
+                      defaultCountry="BR"
                       placeholder={t('phonePlaceholder')}
                     />
                   </div>
@@ -312,16 +320,44 @@ export function CustomerForm({
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
+              <form.Field name="cpfCnpj">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor={field.name}>
+                      {customerType === 'business' ? 'CNPJ' : 'CPF'}
+                    </Label>
+                    <Input
+                      id={field.name}
+                      name={field.name}
+                      inputMode="numeric"
+                      autoComplete="off"
+                      value={field.state.value || ''}
+                      maxLength={14}
+                      onChange={(e) =>
+                        field.handleChange(
+                          e.target.value.replace(/\D/g, '').slice(0, 14) || undefined,
+                        )
+                      }
+                      onBlur={field.handleBlur}
+                      placeholder={customerType === 'business' ? '00000000000000' : '00000000000'}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Documento usado para identificar o cliente e vincular os dados migrados do EstoqueNow.
+                    </p>
+                  </div>
+                )}
+              </form.Field>
+
               <form.AppField name="instagram">
                 {(field) => <field.Input label="Instagram" placeholder="@usuario" />}
-              </form.AppField>
-
-              <form.AppField name="acquisitionSource">
-                {(field) => <field.Input label="Como conheceu a loja" placeholder="Instagram, Google, indicação..." />}
               </form.AppField>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
+              <form.AppField name="acquisitionSource">
+                {(field) => <field.Input label="Como conheceu a loja" placeholder="Instagram, Google, indicação..." />}
+              </form.AppField>
+
               <form.Field name="registeredAt">
                 {(field) => (
                   <div className="space-y-2">
@@ -337,7 +373,9 @@ export function CustomerForm({
                   </div>
                 )}
               </form.Field>
+            </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
               <form.Field name="backupContact">
                 {(field) => (
                   <div className="space-y-2">
@@ -345,6 +383,7 @@ export function CustomerForm({
                     <PhoneInput
                       value={field.state.value || ''}
                       onChange={field.handleChange}
+                      defaultCountry="BR"
                       placeholder="Telefone ou WhatsApp alternativo"
                     />
                   </div>

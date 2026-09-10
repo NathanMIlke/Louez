@@ -15,6 +15,7 @@ import {
 import { notifyCustomerCreated } from '@/lib/discord/platform-notifications'
 
 type LocaCameraCustomerInput = CustomerInput & {
+  cpfCnpj?: string | null
   instagram?: string | null
   acquisitionSource?: string | null
   registeredAt?: string | Date | null
@@ -53,6 +54,11 @@ function resolveCustomerCompanyFields(validated: CustomerInput) {
 
 function nullableText(value: unknown, maxLength = 255) {
   const normalized = String(value ?? '').trim().slice(0, maxLength)
+  return normalized || null
+}
+
+function normalizedDocument(value: unknown) {
+  const normalized = String(value ?? '').replace(/\D/g, '').slice(0, 14)
   return normalized || null
 }
 
@@ -101,6 +107,7 @@ async function saveLocaCameraCustomerProfile(
   storeId: string,
   data: LocaCameraCustomerInput,
 ) {
+  const cpfCnpj = normalizedDocument(data.cpfCnpj)
   const instagram = normalizedInstagram(data.instagram)
   const acquisitionSource = nullableText(data.acquisitionSource)
   const registeredAt = normalizedRegistrationDate(data.registeredAt)
@@ -122,6 +129,7 @@ async function saveLocaCameraCustomerProfile(
     await db
       .update(locacameraCustomerProfiles)
       .set({
+        cpfCnpj,
         instagram,
         acquisitionSource,
         registeredAt,
@@ -136,6 +144,7 @@ async function saveLocaCameraCustomerProfile(
   await db.insert(locacameraCustomerProfiles).values({
     customerId,
     storeId,
+    cpfCnpj,
     instagram,
     acquisitionSource,
     registeredAt,

@@ -376,11 +376,19 @@ export async function proxy(request: NextRequest) {
   // -----------------------------------------------------------------------------
   // 2. STANDALONE: single store on a single origin (the default mode)
   // -----------------------------------------------------------------------------
-  // The instance's storefront is served at the root of whatever host it runs
-  // on; dashboard/auth routes stay reachable by path. Platform deployments
-  // (LOUEZ_MODE=platform) skip this branch entirely, and referral capture is
-  // deliberately absent here — the referral program is platform machinery.
+  // LocaCamera uses this origin as the management entry point. Storefront paths
+  // remain available, but the bare root always enters the dashboard.
   if (isStandaloneMode()) {
+    if (pathname === "/") {
+      const dashboardUrl = request.nextUrl.clone();
+      dashboardUrl.pathname = "/dashboard";
+      return withRuntimeSecurityHeaders(
+        NextResponse.redirect(dashboardUrl),
+        pathname,
+        publicEnv,
+      );
+    }
+
     if (isDashboardRoute(pathname)) {
       return withRuntimeSecurityHeaders(NextResponse.next(), pathname, publicEnv);
     }

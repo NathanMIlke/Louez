@@ -49,6 +49,10 @@ interface Customer {
   postalCode: string | null
   country: string | null
   notes: string | null
+  instagram?: string | null
+  acquisitionSource?: string | null
+  registeredAt?: Date | string | null
+  pinnedFiles?: string | null
 }
 
 interface CustomerFormProps {
@@ -56,7 +60,18 @@ interface CustomerFormProps {
   openReplaySource?: DashboardCreationSource
 }
 
-const COUNTRY_CODES = ['FR', 'BE', 'CH', 'LU', 'MC', 'CA'] as const
+const COUNTRY_CODES = ['BR', 'FR', 'BE', 'CH', 'LU', 'MC', 'CA'] as const
+
+function dateInputValue(value: Date | string | null | undefined) {
+  if (!value) return ''
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 export function CustomerForm({
   customer,
@@ -95,13 +110,17 @@ export function CustomerForm({
       address: customer?.address || undefined,
       city: customer?.city || undefined,
       postalCode: customer?.postalCode || undefined,
-      country: customer?.country || undefined,
+      country: customer?.country || 'BR',
       notes: customer?.notes || undefined,
+      instagram: customer?.instagram || undefined,
+      acquisitionSource: customer?.acquisitionSource || undefined,
+      registeredAt: dateInputValue(customer?.registeredAt) || undefined,
+      pinnedFiles: customer?.pinnedFiles || undefined,
     },
     onSubmit: async ({ value }) => {
       setRootError(null)
 
-      // Validate with Zod
+      // Validate Louez's native customer fields with the upstream schema.
       const validation = customerSchema.safeParse(value)
       if (!validation.success) {
         const firstError = validation.error.issues[0]
@@ -111,10 +130,18 @@ export function CustomerForm({
         return
       }
 
+      const payload = {
+        ...validation.data,
+        instagram: value.instagram || undefined,
+        acquisitionSource: value.acquisitionSource || undefined,
+        registeredAt: value.registeredAt || undefined,
+        pinnedFiles: value.pinnedFiles || undefined,
+      }
+
       startTransition(async () => {
         const result = isEditing
-          ? await updateCustomer(customer.id, validation.data)
-          : await createCustomer(validation.data)
+          ? await updateCustomer(customer.id, payload)
+          : await createCustomer(payload)
 
         if (result.error) {
           setRootError(result.error)
@@ -150,6 +177,9 @@ export function CustomerForm({
       : country === 'BE'
         ? t('companyNumberBce')
         : t('companyNumber')
+
+  const countryLabel = (code: (typeof COUNTRY_CODES)[number] | string) =>
+    code === 'BR' ? 'Brasil' : tCountries(code)
 
   return (
     <form.AppForm>
@@ -304,6 +334,57 @@ export function CustomerForm({
 
       <Card>
         <CardHeader>
+          <CardTitle>Dados da LocaCamera</CardTitle>
+          <CardDescription>
+            Informações comerciais e cadastrais usadas pela operação e pela migração do EstoqueNow.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <form.AppField name="instagram">
+              {(field) => <field.Input label="Instagram" placeholder="@usuario" />}
+            </form.AppField>
+
+            <form.AppField name="acquisitionSource">
+              {(field) => <field.Input label="Como conheceu a loja" placeholder="Instagram, Google, indicação..." />}
+            </form.AppField>
+          </div>
+
+          <form.Field name="registeredAt">
+            {(field) => (
+              <div className="space-y-2 sm:max-w-xs">
+                <Label htmlFor={field.name}>Data de cadastro</Label>
+                <Input
+                  id={field.name}
+                  name={field.name}
+                  type="date"
+                  value={field.state.value || ''}
+                  onChange={(e) => field.handleChange(e.target.value || undefined)}
+                  onBlur={field.handleBlur}
+                />
+              </div>
+            )}
+          </form.Field>
+
+          <form.AppField name="pinnedFiles">
+            {(field) => (
+              <div className="space-y-2">
+                <Label htmlFor={field.name}>Arquivos fixados</Label>
+                <field.Textarea
+                  placeholder="Cole links ou referências de arquivos, um por linha."
+                  rows={4}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Aceita links e referências privadas trazidas do EstoqueNow/Wix. O upload direto de documentos será conectado ao storage depois.
+                </p>
+              </div>
+            )}
+          </form.AppField>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>{t('addressSection')}</CardTitle>
           <CardDescription>
             {t('addressDescription')}
@@ -333,13 +414,13 @@ export function CustomerForm({
                   >
                     <SelectTrigger id={field.name}>
                       <SelectValue placeholder={t('selectCountry')}>
-                        {field.state.value ? tCountries(field.state.value) : undefined}
+                        {field.state.value ? countryLabel(field.state.value) : undefined}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {COUNTRY_CODES.map((code) => (
-                        <SelectItem key={code} value={code} label={tCountries(code)}>
-                          {tCountries(code)}
+                        <SelectItem key={code} value={code} label={countryLabel(code)}>
+                          {countryLabel(code)}
                         </SelectItem>
                       ))}
                     </SelectContent>

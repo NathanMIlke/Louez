@@ -18,6 +18,7 @@ type LocaCameraCustomerInput = CustomerInput & {
   instagram?: string | null
   acquisitionSource?: string | null
   registeredAt?: string | Date | null
+  backupContact?: string | null
   pinnedFiles?: string | null
 }
 
@@ -31,16 +32,6 @@ async function getStoreId() {
   return store.id
 }
 
-/**
- * Company identifiers as they must be persisted.
- *
- * The scheme is always derived from the customer's country — never read from
- * the submitted payload — so it can't contradict the number it labels, and
- * both identifiers are dropped when the customer is not a business. A number
- * that doesn't match its country's format is kept as typed but gets no scheme:
- * the invoice then degrades to B2C instead of being transmitted with a bogus
- * identifier.
- */
 function resolveCustomerCompanyFields(validated: CustomerInput) {
   if (validated.customerType !== 'business') {
     return { companyNumber: null, companyNumberScheme: null, vatNumber: null }
@@ -50,7 +41,6 @@ function resolveCustomerCompanyFields(validated: CustomerInput) {
   const raw = validated.companyNumber?.trim() ?? ''
   const isUsable = raw.length > 0 && isValidCompanyNumber(country, raw)
   const scheme = isUsable ? resolveCompanyNumberScheme(country) : null
-  // FR/BE identifiers are pure digits; elsewhere keep what was typed.
   const companyNumber = scheme ? digitsOnly(raw) : raw
   const vatNumber = validated.vatNumber?.replace(/\s/g, '').toUpperCase() ?? ''
 
@@ -114,6 +104,7 @@ async function saveLocaCameraCustomerProfile(
   const instagram = normalizedInstagram(data.instagram)
   const acquisitionSource = nullableText(data.acquisitionSource)
   const registeredAt = normalizedRegistrationDate(data.registeredAt)
+  const backupContact = nullableText(data.backupContact)
   const pinnedFiles = normalizedPinnedFiles(data.pinnedFiles)
 
   const [existing] = await db
@@ -134,6 +125,7 @@ async function saveLocaCameraCustomerProfile(
         instagram,
         acquisitionSource,
         registeredAt,
+        backupContact,
         pinnedFiles,
         updatedAt: new Date(),
       })
@@ -147,6 +139,7 @@ async function saveLocaCameraCustomerProfile(
     instagram,
     acquisitionSource,
     registeredAt,
+    backupContact,
     pinnedFiles,
   })
 }
@@ -158,7 +151,6 @@ export async function createCustomer(data: LocaCameraCustomerInput) {
 
     const validated = customerSchema.parse(data)
 
-    // Check if customer with same email already exists
     const existingCustomer = await db.query.customers.findFirst({
       where: and(
         eq(customers.storeId, store.id),
@@ -199,7 +191,6 @@ export async function updateCustomer(customerId: string, data: LocaCameraCustome
     const storeId = await getStoreId()
     const validated = customerSchema.parse(data)
 
-    // Check if customer exists and belongs to store
     const existingCustomer = await db.query.customers.findFirst({
       where: and(
         eq(customers.id, customerId),
@@ -211,7 +202,6 @@ export async function updateCustomer(customerId: string, data: LocaCameraCustome
       return { error: 'errors.customerNotFound' }
     }
 
-    // Check if another customer with same email exists
     if (validated.email !== existingCustomer.email) {
       const emailExists = await db.query.customers.findFirst({
         where: and(
@@ -249,7 +239,6 @@ export async function deleteCustomer(customerId: string) {
   try {
     const storeId = await getStoreId()
 
-    // Check if customer exists and belongs to store
     const existingCustomer = await db.query.customers.findFirst({
       where: and(
         eq(customers.id, customerId),
@@ -261,7 +250,6 @@ export async function deleteCustomer(customerId: string) {
       return { error: 'errors.customerNotFound' }
     }
 
-    // Check if customer has reservations
     const reservationCount = await db
       .select({ count: count() })
       .from(reservations)
@@ -288,7 +276,6 @@ export async function updateCustomerNotes(customerId: string, notes: string) {
   try {
     const storeId = await getStoreId()
 
-    // Check if customer exists and belongs to store
     const existingCustomer = await db.query.customers.findFirst({
       where: and(
         eq(customers.id, customerId),

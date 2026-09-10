@@ -19,7 +19,7 @@ export const locacameraCustomerProfiles = mysqlTable(
     acquisitionSource: varchar('acquisition_source', { length: 255 }),
     registeredAt: timestamp('registered_at', { mode: 'date' }),
 
-    // One pinned file link/reference per line. This intentionally accepts both
+    // Pinned links/references, one per line. This intentionally accepts both
     // URLs and private legacy references so the EstoqueNow/Wix migration can
     // preserve document pointers before binary files are copied to Louez storage.
     pinnedFiles: text('pinned_files'),

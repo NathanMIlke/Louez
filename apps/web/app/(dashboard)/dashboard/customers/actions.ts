@@ -2,7 +2,7 @@
 
 import { db } from '@louez/db'
 import { getCurrentStore } from '@/lib/store-context'
-import { customers, reservations } from '@louez/db'
+import { customers, locacameraCustomerProfiles, reservations } from '@louez/db'
 import { eq, and, count } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import {
@@ -13,6 +13,13 @@ import {
   type CustomerInput,
 } from '@louez/validations'
 import { notifyCustomerCreated } from '@/lib/discord/platform-notifications'
+
+type LocaCameraCustomerInput = CustomerInput & {
+  instagram?: string | null
+  acquisitionSource?: string | null
+  registeredAt?: string | Date | null
+  pinnedFiles?: string | null
+}
 
 async function getStoreId() {
   const store = await getCurrentStore()
@@ -54,7 +61,97 @@ function resolveCustomerCompanyFields(validated: CustomerInput) {
   }
 }
 
-export async function createCustomer(data: CustomerInput) {
+function nullableText(value: unknown, maxLength = 255) {
+  const normalized = String(value ?? '').trim().slice(0, maxLength)
+  return normalized || null
+}
+
+function normalizedInstagram(value: unknown) {
+  const normalized = String(value ?? '')
+    .trim()
+    .replace(/^https?:\/\/(?:www\.)?instagram\.com\//i, '')
+    .replace(/^@/, '')
+    .replace(/\?.*$/, '')
+    .replace(/\/+$/, '')
+    .slice(0, 255)
+
+  return normalized || null
+}
+
+function normalizedPinnedFiles(value: unknown) {
+  const unique = Array.from(
+    new Set(
+      String(value ?? '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean),
+    ),
+  )
+
+  return unique.length > 0 ? unique.join('\n') : null
+}
+
+function normalizedRegistrationDate(value: unknown) {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value
+  }
+
+  const raw = String(value ?? '').trim()
+  if (!raw) return null
+
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+    ? new Date(`${raw}T12:00:00.000Z`)
+    : new Date(raw)
+
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+async function saveLocaCameraCustomerProfile(
+  customerId: string,
+  storeId: string,
+  data: LocaCameraCustomerInput,
+) {
+  const instagram = normalizedInstagram(data.instagram)
+  const acquisitionSource = nullableText(data.acquisitionSource)
+  const registeredAt = normalizedRegistrationDate(data.registeredAt)
+  const pinnedFiles = normalizedPinnedFiles(data.pinnedFiles)
+
+  const [existing] = await db
+    .select({ customerId: locacameraCustomerProfiles.customerId })
+    .from(locacameraCustomerProfiles)
+    .where(
+      and(
+        eq(locacameraCustomerProfiles.customerId, customerId),
+        eq(locacameraCustomerProfiles.storeId, storeId),
+      ),
+    )
+    .limit(1)
+
+  if (existing) {
+    await db
+      .update(locacameraCustomerProfiles)
+      .set({
+        instagram,
+        acquisitionSource,
+        registeredAt,
+        pinnedFiles,
+        updatedAt: new Date(),
+      })
+      .where(eq(locacameraCustomerProfiles.customerId, customerId))
+    return
+  }
+
+  await db.insert(locacameraCustomerProfiles).values({
+    customerId,
+    storeId,
+    instagram,
+    acquisitionSource,
+    registeredAt,
+    pinnedFiles,
+  })
+}
+
+export async function createCustomer(data: LocaCameraCustomerInput) {
   try {
     const store = await getCurrentStore()
     if (!store) return { error: 'errors.storeNotFound' }
@@ -82,6 +179,8 @@ export async function createCustomer(data: CustomerInput) {
       })
       .$returningId()
 
+    await saveLocaCameraCustomerProfile(customer.id, store.id, data)
+
     notifyCustomerCreated(
       { id: store.id, name: store.name, slug: store.slug },
       { firstName: validated.firstName, lastName: validated.lastName, email: validated.email }
@@ -95,7 +194,7 @@ export async function createCustomer(data: CustomerInput) {
   }
 }
 
-export async function updateCustomer(customerId: string, data: CustomerInput) {
+export async function updateCustomer(customerId: string, data: LocaCameraCustomerInput) {
   try {
     const storeId = await getStoreId()
     const validated = customerSchema.parse(data)
@@ -135,6 +234,8 @@ export async function updateCustomer(customerId: string, data: CustomerInput) {
       })
       .where(eq(customers.id, customerId))
 
+    await saveLocaCameraCustomerProfile(customerId, storeId, data)
+
     revalidatePath('/dashboard/customers')
     revalidatePath(`/dashboard/customers/${customerId}`)
     return { success: true }
@@ -170,6 +271,9 @@ export async function deleteCustomer(customerId: string) {
       return { error: 'errors.customerHasReservations' }
     }
 
+    await db
+      .delete(locacameraCustomerProfiles)
+      .where(eq(locacameraCustomerProfiles.customerId, customerId))
     await db.delete(customers).where(eq(customers.id, customerId))
 
     revalidatePath('/dashboard/customers')

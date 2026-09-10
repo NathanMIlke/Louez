@@ -79,6 +79,8 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
         customer={{
           ...customer,
           cpfCnpj: locacameraProfile?.cpfCnpj ?? null,
+          birthday: locacameraProfile?.birthday ?? null,
+          gender: locacameraProfile?.genderName ?? locacameraProfile?.gender ?? null,
           instagram: locacameraProfile?.instagram ?? null,
           acquisitionSource: locacameraProfile?.acquisitionSource ?? null,
           registeredAt: locacameraProfile?.registeredAt ?? customer.createdAt,

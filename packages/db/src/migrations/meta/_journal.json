@@ -547,6 +547,20 @@
       "when": 1789068600000,
       "tag": "0072_locacamera_customer_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "5",
+      "when": 1789074000000,
+      "tag": "0073_locacamera_backup_contact",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "5",
+      "when": 1789074900000,
+      "tag": "0074_locacamera_customer_migration_fields",
+      "breakpoints": true
     }
   ]
 }

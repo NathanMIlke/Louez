@@ -31,6 +31,8 @@ if (process.env.NODE_ENV !== "production") {
 export const pgDb = drizzle({ client, schema });
 export type PostgresDatabase = typeof pgDb;
 export * from "./postgres-schema";
+export { getProductAvailability } from "./postgres-availability";
+export type { ProductAvailabilityResult } from "./postgres-availability";
 export {
   BLOCKING_RESERVATION_STATUSES,
   buildReservationOverlapPredicate,

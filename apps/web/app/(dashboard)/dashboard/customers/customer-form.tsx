@@ -50,6 +50,8 @@ interface Customer {
   country: string | null
   notes: string | null
   cpfCnpj?: string | null
+  birthday?: Date | string | null
+  gender?: string | null
   instagram?: string | null
   acquisitionSource?: string | null
   registeredAt?: Date | string | null
@@ -63,6 +65,7 @@ interface CustomerFormProps {
 }
 
 const COUNTRY_CODES = ['BR', 'FR', 'BE', 'CH', 'LU', 'MC', 'CA'] as const
+const GENDER_OPTIONS = ['Masculino', 'Feminino', 'Outro', 'Prefere não informar'] as const
 
 function dateInputValue(value: Date | string | null | undefined) {
   if (!value) return ''
@@ -117,6 +120,8 @@ export function CustomerForm({
       country: customer?.country || 'BR',
       notes: customer?.notes || undefined,
       cpfCnpj: documentInputValue(customer?.cpfCnpj) || undefined,
+      birthday: dateInputValue(customer?.birthday) || undefined,
+      gender: customer?.gender || undefined,
       instagram: customer?.instagram || undefined,
       acquisitionSource: customer?.acquisitionSource || undefined,
       registeredAt: dateInputValue(customer?.registeredAt) || undefined,
@@ -136,6 +141,8 @@ export function CustomerForm({
       const payload = {
         ...validation.data,
         cpfCnpj: value.cpfCnpj || undefined,
+        birthday: value.birthday || undefined,
+        gender: value.gender || undefined,
         instagram: value.instagram || undefined,
         acquisitionSource: value.acquisitionSource || undefined,
         registeredAt: value.registeredAt || undefined,
@@ -344,6 +351,49 @@ export function CustomerForm({
                     <p className="text-sm text-muted-foreground">
                       Documento usado para identificar o cliente e vincular os dados migrados do EstoqueNow.
                     </p>
+                  </div>
+                )}
+              </form.Field>
+
+              <form.Field name="birthday">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor={field.name}>Data de nascimento</Label>
+                    <Input
+                      id={field.name}
+                      name={field.name}
+                      type="date"
+                      value={field.state.value || ''}
+                      onChange={(e) => field.handleChange(e.target.value || undefined)}
+                      onBlur={field.handleBlur}
+                    />
+                  </div>
+                )}
+              </form.Field>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <form.Field name="gender">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor={field.name}>Sexo</Label>
+                    <Select
+                      value={field.state.value || undefined}
+                      onValueChange={(value) => {
+                        if (value !== null) field.handleChange(value || undefined)
+                      }}
+                    >
+                      <SelectTrigger id={field.name}>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GENDER_OPTIONS.map((option) => (
+                          <SelectItem key={option} value={option} label={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
               </form.Field>

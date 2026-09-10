@@ -685,6 +685,9 @@ importers:
       '@louez/types':
         specifier: workspace:*
         version: link:../types
+      '@louez/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@t3-oss/env-core':
         specifier: ^0.13.10
         version: 0.13.10(typescript@7.0.2)(zod@4.3.5)

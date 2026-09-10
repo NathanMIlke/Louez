@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { getVariantAxisIdentity } from '@louez/utils';
+
 import { AI_ADVISOR_PRODUCT_CONTEXT_MAX_LENGTH } from './ai-advisor';
 import { imageUrlSchema as storedImageUrlSchema } from './image';
 
@@ -460,7 +462,7 @@ export const createProductSchema = (
 
       const axes = data.bookingAttributeAxes || [];
       const normalizedAxisKeys = axes.map((axis) =>
-        axis.key.trim().toLowerCase(),
+        getVariantAxisIdentity(axis.key),
       );
       const duplicateKeys = normalizedAxisKeys.filter(
         (key, index) => normalizedAxisKeys.indexOf(key) !== index,
@@ -623,7 +625,7 @@ export const productSchema = z
 
     const axes = data.bookingAttributeAxes || [];
     const normalizedAxisKeys = axes.map((axis) =>
-      axis.key.trim().toLowerCase(),
+      getVariantAxisIdentity(axis.key),
     );
     const duplicateKeys = normalizedAxisKeys.filter(
       (key, index) => normalizedAxisKeys.indexOf(key) !== index,

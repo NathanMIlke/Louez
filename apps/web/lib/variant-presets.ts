@@ -1,3 +1,5 @@
+import { VARIANT_PRESET_ALIASES } from '@louez/utils';
+
 export type VariantPresetId = 'size' | 'shoeSize' | 'color' | 'material';
 
 export type VariantPresetValueSeed =
@@ -17,7 +19,7 @@ export type VariantPresetValueSeed =
 export interface ResolvedVariantPreset {
   id: VariantPresetId;
   key: string;
-  aliases: string[];
+  aliases: readonly string[];
   kind: 'size' | 'color' | 'custom';
   label: string;
   defaultActive: boolean;
@@ -29,7 +31,7 @@ export interface VariantPreset {
   /** Locale-independent key stored in variant definitions and product axes. */
   key: string;
   /** Historical localized keys that may already be persisted. */
-  aliases: string[];
+  aliases: readonly string[];
   kind: 'size' | 'color' | 'custom';
   defaultActive: boolean;
   values: VariantPresetValueSeed[];
@@ -64,15 +66,7 @@ export const VARIANT_PRESETS: VariantPreset[] = [
   {
     id: 'size',
     key: 'size',
-    aliases: [
-      'Taille',
-      'Größe',
-      'Talla',
-      'Taglia',
-      'Maat',
-      'Rozmiar',
-      'Tamanho',
-    ],
+    aliases: VARIANT_PRESET_ALIASES['size'],
     kind: 'size',
     defaultActive: true,
     values: ['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((label) => ({ label })),
@@ -80,16 +74,7 @@ export const VARIANT_PRESETS: VariantPreset[] = [
   {
     id: 'shoeSize',
     key: 'shoe-size',
-    aliases: [
-      'Pointure',
-      'Shoe size',
-      'Schuhgröße',
-      'Número de calzado',
-      'Numero di scarpe',
-      'Schoenmaat',
-      'Rozmiar buta',
-      'Tamanho do calçado',
-    ],
+    aliases: VARIANT_PRESET_ALIASES['shoe-size'],
     kind: 'size',
     defaultActive: false,
     values: Array.from({ length: 11 }, (_, i) => ({ label: String(36 + i) })),
@@ -97,7 +82,7 @@ export const VARIANT_PRESETS: VariantPreset[] = [
   {
     id: 'color',
     key: 'color',
-    aliases: ['Couleur', 'Farbe', 'Colore', 'Kleur', 'Kolor', 'Cor'],
+    aliases: VARIANT_PRESET_ALIASES['color'],
     kind: 'color',
     defaultActive: true,
     values: [
@@ -118,7 +103,7 @@ export const VARIANT_PRESETS: VariantPreset[] = [
   {
     id: 'material',
     key: 'material',
-    aliases: ['Matière', 'Material', 'Materiale', 'Materiaal', 'Materiał'],
+    aliases: VARIANT_PRESET_ALIASES['material'],
     kind: 'custom',
     defaultActive: false,
     values: [

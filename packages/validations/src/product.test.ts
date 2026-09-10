@@ -52,6 +52,44 @@ const validProduct = {
   bookingAttributeAxes: [],
 };
 
+test("rejects equivalent legacy and catalog axes in both product schemas", () => {
+  const product = {
+    ...validProduct,
+    trackUnits: true,
+    bookingAttributeAxes: [
+      { key: "taille", label: "taille", position: 0 },
+      { key: "size", label: "Size", position: 1 },
+    ],
+    units: [{ identifier: "bike-L", attributes: { taille: "L", size: "L" } }],
+  };
+
+  for (const schema of [createProductSchema(translate), productSchema]) {
+    const result = schema.safeParse(product);
+    assert.equal(result.success, false);
+    if (result.success) continue;
+    assert(result.error.issues.some((issue) => issue.path[0] === "bookingAttributeAxes"));
+  }
+});
+
+test("preserves historical attributes and accepts distinct custom axes with the same label", () => {
+  const product = {
+    ...validProduct,
+    trackUnits: true,
+    bookingAttributeAxes: [
+      { key: "taille", label: "Taille", position: 0 },
+      { key: "frame_size", label: "Taille", position: 1 },
+    ],
+    units: [{ identifier: "bike-L", attributes: { taille: "L", frame_size: "54" } }],
+  };
+
+  for (const schema of [createProductSchema(translate), productSchema]) {
+    const result = schema.safeParse(product);
+    assert.equal(result.success, true);
+    if (!result.success) continue;
+    assert.deepEqual(result.data.units?.[0].attributes, product.units[0].attributes);
+  }
+});
+
 test("accepts multiple same-origin product image paths returned by proxied storage", () => {
   assert.equal(createProductSchema(translate).safeParse(validProduct).success, true);
   assert.equal(productSchema.safeParse(validProduct).success, true);

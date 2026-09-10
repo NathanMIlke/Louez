@@ -24,6 +24,7 @@ export {
 // Pricing utilities
 export * from './pricing'
 export * from './variants'
+export * from './util.variant-identity'
 export * from './availability'
 export * from './stock-capacity'
 

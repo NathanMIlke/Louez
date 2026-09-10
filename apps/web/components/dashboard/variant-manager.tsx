@@ -41,7 +41,7 @@ import {
   Switch,
   toastManager,
 } from '@louez/ui';
-import { cn, normalizeAxisKey } from '@louez/utils';
+import { cn, findMatchingVariant } from '@louez/utils';
 
 import { VariantColorPicker } from '@/components/dashboard/variant-color-picker';
 import { orpc } from '@/lib/orpc/react';
@@ -127,14 +127,7 @@ const VariantManager = () => {
   const managedVariants = useMemo<ManagedVariant[]>(() => {
     const matchedDefinitionIds = new Set<string>();
     const presetItems = resolvedPresets.map((preset) => {
-      const presetAliases = new Set(
-        [preset.key, preset.label, ...preset.aliases].map(normalizeAxisKey),
-      );
-      const definition = definitions.find(
-        (entry) =>
-          presetAliases.has(normalizeAxisKey(entry.key)) ||
-          presetAliases.has(normalizeAxisKey(entry.label)),
-      );
+      const definition = findMatchingVariant(preset.key, definitions);
       if (definition) matchedDefinitionIds.add(definition.id);
 
       return {

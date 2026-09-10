@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type Ref } from "react";
 
 import Link from "next/link";
 
@@ -51,8 +51,21 @@ import { Popover, PopoverContent, PopoverTrigger } from "@louez/ui";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@louez/ui";
 import { toastManager } from "@louez/ui";
 import { CalendarCheckIcon, PurchaseIcon, TagIcon } from "@louez/ui/icons";
-import { cn, getCurrencySymbol, normalizeAxisKey, toDatePickerValue } from "@louez/utils";
+import {
+  cn,
+  canonicalizeAttributes,
+  findMatchingVariant,
+  getCurrencySymbol,
+  hasCompleteAttributes,
+  normalizeAxisKey,
+  toDatePickerValue,
+} from "@louez/utils";
 
+import {
+  buildVariantRegistry,
+  type VariantCatalogDefinition,
+  type VariantRegistryEntry,
+} from "@/components/dashboard/util.variant-registry";
 import { VariantManagerDrawer } from "@/components/dashboard/variant-manager";
 import { WhatsNewLinkCard } from "@/components/dashboard/whats-new-link-card";
 import { ReservationDatePickerControl } from "@/components/form/form-reservation-date-picker";
@@ -81,44 +94,12 @@ interface BookingAttributeAxisInput {
   position: number;
 }
 
-export interface VariantCatalogValue {
-  id: string;
-  label: string;
-  colorHex: string | null;
-  position: number;
-}
-
-export interface VariantCatalogDefinition {
-  id: string;
-  key: string;
-  label: string;
-  kind: "size" | "color" | "custom";
-  isActive: boolean;
-  position: number;
-  values: VariantCatalogValue[];
-}
-
 interface EnsureDefinitionInput {
   key?: string;
   label: string;
   kind: "size" | "color" | "custom";
   isActive?: boolean;
   values: Array<{ label: string; colorHex?: string }>;
-}
-
-/**
- * Unified registry the row combobox selects from: active store definitions,
- * active-by-default presets not yet persisted, and active legacy product axes.
- * `colorIndex` gives each variant a stable color.
- */
-interface VariantRegistryEntry {
-  key: string;
-  label: string;
-  kind: "size" | "color" | "custom";
-  colorIndex: number;
-  /** Absent for presets not yet adopted and legacy axes. */
-  definitionId?: string;
-  values: Array<{ label: string; colorHex: string | null }>;
 }
 
 // One color per variant axis — chips on unit rows, dots in the axes list and popup.
@@ -184,6 +165,8 @@ function UnitVariantsCombobox({
   createLabel,
   manageLabel,
   onManage,
+  inputRef,
+  ariaLabel,
 }: {
   registry: VariantRegistryEntry[];
   attributes: Record<string, string> | undefined;
@@ -195,6 +178,8 @@ function UnitVariantsCombobox({
   createLabel: (value: string, axis: string) => string;
   manageLabel: string;
   onManage: () => void;
+  inputRef?: Ref<HTMLInputElement>;
+  ariaLabel?: string;
 }) {
   const [query, setQuery] = useState("");
 
@@ -349,6 +334,8 @@ function UnitVariantsCombobox({
                 </ComboboxChip>
               ))}
               <ComboboxChipsInput
+                ref={inputRef}
+                aria-label={ariaLabel}
                 className="w-16"
                 placeholder={
                   value.length === 0
@@ -831,6 +818,9 @@ export function UnitTrackingEditor({
   const [genCount, setGenCount] = useState("5");
   const [touchedUnits, setTouchedUnits] = useState<Set<number>>(new Set());
   const [newRef, setNewRef] = useState("");
+  const [newRefAttributes, setNewRefAttributes] = useState<Record<string, string>>({});
+  const newRefInputRef = useRef<HTMLInputElement>(null);
+  const newRefVariantsInputRef = useRef<HTMLInputElement>(null);
   const [generatorOpen, setGeneratorOpen] = useState(false);
 
   // Store-level shared variant catalog
@@ -873,74 +863,10 @@ export function UnitTrackingEditor({
 
   // Everything selectable in the row combobox: active definitions, default
   // presets without a saved preference, and legacy product axes.
-  const variantRegistry = useMemo<VariantRegistryEntry[]>(() => {
-    const matchesIdentity = (
-      left: { key: string; label?: string; aliases?: readonly string[] },
-      right: { key: string; label?: string },
-    ) => {
-      const leftAliases = new Set(
-        [left.key, left.label, ...(left.aliases ?? [])]
-          .filter((value): value is string => Boolean(value))
-          .map(normalizeAxisKey),
-      );
-      return (
-        leftAliases.has(normalizeAxisKey(right.key)) ||
-        (right.label ? leftAliases.has(normalizeAxisKey(right.label)) : false)
-      );
-    };
-    const findDefinition = (identity: { key: string; label?: string }) =>
-      variantCatalog.find((definition) => matchesIdentity(definition, identity));
-    const entries: VariantRegistryEntry[] = variantCatalog
-      .filter((definition) => definition.isActive)
-      .map((definition) => ({
-        key: definition.key,
-        label: definition.label,
-        kind: definition.kind,
-        colorIndex: 0,
-        definitionId: definition.id,
-        values: definition.values.map((value) => ({
-          label: value.label,
-          colorHex: value.colorHex,
-        })),
-      }));
-    const hasRegistryEntry = (identity: {
-      key: string;
-      label?: string;
-      aliases?: readonly string[];
-    }) =>
-      entries.some((entry) => matchesIdentity(identity, entry) || matchesIdentity(entry, identity));
-    for (const preset of resolvedPresets) {
-      const matchingDefinition = findDefinition(preset);
-      if (matchingDefinition || !preset.defaultActive || hasRegistryEntry(preset)) continue;
-      entries.push({
-        key: preset.key,
-        label: preset.label,
-        kind: preset.kind,
-        colorIndex: 0,
-        values: preset.values,
-      });
-    }
-    for (const axis of activeBookingAttributeAxes) {
-      if (hasRegistryEntry(axis)) continue;
-      const definition = findDefinition(axis);
-      entries.push({
-        key: axis.key,
-        label: definition?.label ?? axis.label,
-        kind: definition?.kind ?? "custom",
-        colorIndex: 0,
-        definitionId: definition?.id,
-        values:
-          definition?.values.map((value) => ({
-            label: value.label,
-            colorHex: value.colorHex,
-          })) ?? [],
-      });
-    }
-    entries.forEach((entry, index) => {
-      entry.colorIndex = index;
-    });
-    return entries;
-  }, [activeBookingAttributeAxes, resolvedPresets, variantCatalog]);
+  const variantRegistry = useMemo(
+    () => buildVariantRegistry(activeBookingAttributeAxes, variantCatalog, resolvedPresets),
+    [activeBookingAttributeAxes, resolvedPresets, variantCatalog],
+  );
 
   const registryByKey = useMemo(
     () => new Map(variantRegistry.map((entry) => [entry.key, entry])),
@@ -958,7 +884,7 @@ export function UnitTrackingEditor({
 
   const adoptRegistryEntry = (entry: VariantRegistryEntry) =>
     ensureVariantDefinition({
-      key: entry.key,
+      key: entry.catalogKey,
       label: entry.label,
       kind: entry.kind,
       values: entry.values.map((value) => ({
@@ -1007,6 +933,23 @@ export function UnitTrackingEditor({
     }
     return map;
   }, [activeBookingAttributeAxes, units]);
+
+  const newRefVariantRegistry = variantRegistry.filter((entry) =>
+    activeBookingAttributeAxes.some((axis) => axis.key === entry.key),
+  );
+  const newRefValuesByAxis = Object.fromEntries(
+    activeBookingAttributeAxes.map((axis) => [
+      axis.key,
+      [...(existingValuesByAxis[axis.key] ?? []), newRefAttributes[axis.key]].filter(
+        (value): value is string => Boolean(value),
+      ),
+    ]),
+  );
+  const hasRequiredVariants = activeBookingAttributeAxes.length > 0;
+  const newRefHasRequiredVariants = hasCompleteAttributes(
+    activeBookingAttributeAxes,
+    newRefAttributes,
+  );
 
   const missingAttributeCount = useMemo(() => {
     if (activeBookingAttributeAxes.length === 0) return 0;
@@ -1060,10 +1003,15 @@ export function UnitTrackingEditor({
     onModeChosenChange(true);
   };
 
-  // Single-field flow: type a reference, press Enter, it's added.
+  // Collect required values before adding a unit to the product form.
   const commitNewRef = () => {
     const identifier = newRef.trim();
-    if (!identifier) return;
+    if (disabled || !identifier) return;
+    if (!newRefHasRequiredVariants) {
+      newRefVariantsInputRef.current?.focus();
+      return;
+    }
+    const attributes = canonicalizeAttributes(activeBookingAttributeAxes, newRefAttributes);
     onChange([
       ...units,
       {
@@ -1072,10 +1020,15 @@ export function UnitTrackingEditor({
         purchasePrice: "",
         purchasedAt: null,
         images: [],
-        attributes: {},
+        attributes,
       },
     ]);
+    for (const [axisKey, value] of Object.entries(attributes)) {
+      void persistVariantValue(axisKey, value);
+    }
     setNewRef("");
+    setNewRefAttributes({});
+    newRefInputRef.current?.focus();
   };
 
   const removeUnit = (index: number) => {
@@ -1126,8 +1079,8 @@ export function UnitTrackingEditor({
     let axes = bookingAttributeAxes;
 
     for (const [key, value] of Object.entries(patch)) {
-      const onProduct = axes.some((axis) => axis.key === key);
-      if (!onProduct) {
+      const existingAxis = findMatchingVariant(key, axes);
+      if (!existingAxis) {
         if (!value) continue;
         if (axes.length >= 3) {
           toastManager.add({ title: t("variantsMaxReached"), type: "error" });
@@ -1141,7 +1094,7 @@ export function UnitTrackingEditor({
         }
         axes = [...axes, { key, label: entry.label, position: axes.length }];
       }
-      nextPatch[key] = value;
+      nextPatch[existingAxis?.key ?? key] = value;
     }
 
     if (axes !== bookingAttributeAxes) onBookingAttributeAxesChange(axes);
@@ -1388,8 +1341,15 @@ export function UnitTrackingEditor({
           {/* Add refs one by one (primary) or generate a series (secondary, collapsed) */}
           <Collapsible open={generatorOpen} onOpenChange={setGeneratorOpen} className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center flex-1">
+              <div
+                className={cn(
+                  "flex min-w-0 flex-1 basis-full items-center sm:basis-0",
+                  hasRequiredVariants && "flex-wrap gap-2",
+                )}
+              >
                 <Input
+                  ref={newRefInputRef}
+                  aria-label={t("identifier")}
                   value={newRef}
                   onChange={(e) => setNewRef(e.target.value)}
                   onKeyDown={(e) => {
@@ -1400,19 +1360,42 @@ export function UnitTrackingEditor({
                   }}
                   placeholder={t("addRefPlaceholder")}
                   disabled={disabled}
-                  className="h-9 min-w-44 flex-1 rounded-r-none"
+                  className={cn(
+                    "h-9 min-w-44 flex-1",
+                    hasRequiredVariants ? "basis-full sm:basis-0" : "rounded-r-none",
+                  )}
                 />
+                {hasRequiredVariants && (
+                  <div className="min-w-0 flex-1">
+                    <UnitVariantsCombobox
+                      registry={newRefVariantRegistry}
+                      attributes={newRefAttributes}
+                      existingValuesByAxis={newRefValuesByAxis}
+                      disabled={disabled}
+                      hasError={false}
+                      inputRef={newRefVariantsInputRef}
+                      ariaLabel={`${t("addUnit")} — ${t("variantsTitle")}`}
+                      onApply={(patch) =>
+                        setNewRefAttributes((current) => ({ ...current, ...patch }))
+                      }
+                      createLabel={(value, axis) => t("createVariantValue", { value, axis })}
+                      manageLabel={t("manageVariants")}
+                      onManage={() => setVariantManagerOpen(true)}
+                    />
+                  </div>
+                )}
                 <Button
-                  className="rounded-l-none border-l-0 "
+                  type="button"
+                  className={cn("shrink-0", !hasRequiredVariants && "rounded-l-none border-l-0")}
                   variant="outline"
                   onClick={commitNewRef}
-                  disabled={disabled || !newRef.trim()}
+                  disabled={disabled || !newRef.trim() || !newRefHasRequiredVariants}
                 >
                   <Plus data-slot="icon" className="size-4" />
                   {t("addUnit")}
                 </Button>
               </div>
-              <Separator orientation="vertical" className="h-6" />
+              <Separator orientation="vertical" className="hidden h-6 sm:block" />
               <CollapsibleTrigger render={<Button variant="outline" disabled={disabled} />}>
                 {t("generateSeries")}
                 <ChevronDown

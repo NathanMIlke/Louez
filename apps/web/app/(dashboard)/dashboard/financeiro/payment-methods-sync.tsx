@@ -4,59 +4,11 @@ import { useEffect } from "react";
 
 type EstoqueNowPaymentMethod = {
   id: string;
+  localId: string | null;
   name: string;
   type: string | null;
   application: string | null;
 };
-
-type LouezPaymentMethod = "stripe" | "cash" | "card" | "transfer" | "check" | "other";
-
-function normalize(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-BR")
-    .trim();
-}
-
-function toLouezMethod(method: EstoqueNowPaymentMethod): LouezPaymentMethod {
-  const name = normalize(method.name);
-
-  if (name.includes("dinheiro")) return "cash";
-  if (name.includes("cheque")) return "check";
-  if (name.includes("stripe")) return "stripe";
-
-  if (
-    ["pix", "transfer", "ted", "deposito bancario", "deposito em conta"].some((term) =>
-      name.includes(term),
-    )
-  ) {
-    return "transfer";
-  }
-
-  if (
-    [
-      "cartao",
-      "credito",
-      "debito",
-      "maquininha",
-      "visa",
-      "master",
-      "elo",
-      "amex",
-      "sipag",
-      "cielo",
-      "rede",
-      "stone",
-      "getnet",
-      "pagseguro",
-    ].some((term) => name.includes(term))
-  ) {
-    return "card";
-  }
-
-  return "other";
-}
 
 export function PaymentMethodsSync() {
   useEffect(() => {
@@ -71,7 +23,9 @@ export function PaymentMethodsSync() {
         if (!response.ok) return;
 
         const data = (await response.json()) as { methods?: EstoqueNowPaymentMethod[] };
-        const methods = Array.isArray(data.methods) ? data.methods : [];
+        const methods = Array.isArray(data.methods)
+          ? data.methods.filter((method) => Boolean(method.localId))
+          : [];
         if (cancelled || methods.length === 0) return;
 
         const select = document.querySelector<HTMLSelectElement>('select[name="method"]');
@@ -87,7 +41,7 @@ export function PaymentMethodsSync() {
 
         for (const method of methods) {
           const option = document.createElement("option");
-          option.value = toLouezMethod(method);
+          option.value = `exact:${method.localId}`;
           option.textContent = method.name;
           option.dataset.estoquenowId = method.id;
           if (method.type) option.dataset.estoquenowType = method.type;
@@ -105,7 +59,7 @@ export function PaymentMethodsSync() {
           select.value = "all";
         }
       } catch {
-        // Mantém as opções nativas do Louez como fallback se o EstoqueNow estiver indisponível.
+        // Mantém as opções já persistidas no Louez se o EstoqueNow estiver indisponível.
       }
     }
 

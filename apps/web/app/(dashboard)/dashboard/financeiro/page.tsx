@@ -1,6 +1,13 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
-import { customers, db, payments, reservations } from "@louez/db";
+import {
+  customers,
+  db,
+  locacameraPaymentMetadata,
+  locacameraPaymentMethods,
+  payments,
+  reservations,
+} from "@louez/db";
 
 import { getCurrentStore } from "@/lib/store-context";
 
@@ -166,13 +173,35 @@ export default async function FinanceiroPage({ searchParams }: FinancePageProps)
   const search = params.search?.trim().toLocaleLowerCase("pt-BR") ?? "";
   const transactionType = params.transactionType ?? "all";
   const status = PAYMENT_STATUSES.includes(params.status as PaymentStatus) ? (params.status as PaymentStatus) : "all";
-  const method = PAYMENT_METHODS.includes(params.method as PaymentMethod) ? (params.method as PaymentMethod) : "all";
+  const requestedMethod = params.method ?? "all";
+  const exactMethodId = requestedMethod.startsWith("exact:")
+    ? requestedMethod.slice("exact:".length).trim() || null
+    : null;
+  const genericMethod =
+    !exactMethodId && PAYMENT_METHODS.includes(requestedMethod as PaymentMethod)
+      ? (requestedMethod as PaymentMethod)
+      : "all";
+  const methodFilterValue = exactMethodId ? `exact:${exactMethodId}` : genericMethod;
   const bankAccount = params.bankAccount === "unassigned" ? "unassigned" : "all";
   const category = FINANCE_CATEGORIES.includes(params.category as FinanceCategory)
     ? (params.category as FinanceCategory)
     : "all";
   const minValue = parseMoneyFilter(params.minValue);
   const maxValue = parseMoneyFilter(params.maxValue);
+
+  const exactMethodRows = await db
+    .select({
+      id: locacameraPaymentMethods.id,
+      name: locacameraPaymentMethods.name,
+    })
+    .from(locacameraPaymentMethods)
+    .where(
+      and(
+        eq(locacameraPaymentMethods.storeId, store.id),
+        eq(locacameraPaymentMethods.isActive, true),
+      ),
+    )
+    .orderBy(locacameraPaymentMethods.name);
 
   const rows = await db
     .select({
@@ -190,10 +219,21 @@ export default async function FinanceiroPage({ searchParams }: FinancePageProps)
       customerFirstName: customers.firstName,
       customerLastName: customers.lastName,
       companyName: customers.companyName,
+      exactPaymentMethodId: locacameraPaymentMetadata.paymentMethodId,
+      paymentMethodNameSnapshot: locacameraPaymentMetadata.paymentMethodNameSnapshot,
+      currentPaymentMethodName: locacameraPaymentMethods.name,
+      sourceSystem: locacameraPaymentMetadata.sourceSystem,
+      externalPaymentId: locacameraPaymentMetadata.externalPaymentId,
+      externalOrderId: locacameraPaymentMetadata.externalOrderId,
     })
     .from(payments)
     .innerJoin(reservations, eq(payments.reservationId, reservations.id))
     .innerJoin(customers, eq(reservations.customerId, customers.id))
+    .leftJoin(locacameraPaymentMetadata, eq(locacameraPaymentMetadata.paymentId, payments.id))
+    .leftJoin(
+      locacameraPaymentMethods,
+      eq(locacameraPaymentMetadata.paymentMethodId, locacameraPaymentMethods.id),
+    )
     .where(eq(reservations.storeId, store.id))
     .orderBy(desc(sql`COALESCE(${payments.paidAt}, ${payments.createdAt})`));
 
@@ -208,12 +248,15 @@ export default async function FinanceiroPage({ searchParams }: FinancePageProps)
     const amount = Number(row.amount);
     const transactionDate = rowDate(row.paidAt, row.createdAt, timezone);
     const description = row.notes?.trim() || `${TYPE_LABELS[type]} do pedido #${row.reservationNumber}`;
+    const paymentMethodLabel =
+      row.paymentMethodNameSnapshot?.trim() || row.currentPaymentMethodName?.trim() || METHOD_LABELS[paymentMethod];
 
     return {
       ...row,
       type,
       status: paymentStatus,
       method: paymentMethod,
+      paymentMethodLabel,
       amount,
       transactionDate,
       direction,
@@ -228,7 +271,16 @@ export default async function FinanceiroPage({ searchParams }: FinancePageProps)
     if (display !== "all" && (row.transactionDate < startDate || row.transactionDate > endDate)) return false;
 
     if (search) {
-      const searchable = [row.description, row.customerName, row.reservationNumber, row.amount.toFixed(2)]
+      const searchable = [
+        row.description,
+        row.customerName,
+        row.reservationNumber,
+        row.amount.toFixed(2),
+        row.paymentMethodLabel,
+        row.externalPaymentId,
+        row.externalOrderId,
+      ]
+        .filter(Boolean)
         .join(" ")
         .toLocaleLowerCase("pt-BR");
       if (!searchable.includes(search)) return false;
@@ -238,7 +290,8 @@ export default async function FinanceiroPage({ searchParams }: FinancePageProps)
     if (transactionType === "expense" && row.direction !== "expense") return false;
     if (PAYMENT_TYPES.includes(transactionType as PaymentType) && row.type !== transactionType) return false;
     if (status !== "all" && row.status !== status) return false;
-    if (method !== "all" && row.method !== method) return false;
+    if (exactMethodId && row.exactPaymentMethodId !== exactMethodId) return false;
+    if (!exactMethodId && genericMethod !== "all" && row.method !== genericMethod) return false;
     if (bankAccount === "unassigned" && row.bankAccount !== "Não informada") return false;
     if (category !== "all" && row.categoryKey !== category) return false;
     if (minValue !== null && row.amount < minValue) return false;
@@ -340,7 +393,7 @@ export default async function FinanceiroPage({ searchParams }: FinancePageProps)
                 type="search"
                 name="search"
                 defaultValue={params.search ?? ""}
-                placeholder="pesquise por descrição, cliente, pedido ou valor"
+                placeholder="pesquise por descrição, cliente, pedido, forma ou valor"
                 className={fieldClass}
               />
             </label>
@@ -369,11 +422,15 @@ export default async function FinanceiroPage({ searchParams }: FinancePageProps)
 
             <label className="space-y-1.5 xl:col-span-2">
               <span className="text-sm font-medium">Formas de pagamento</span>
-              <select name="method" defaultValue={method} className={fieldClass}>
+              <select name="method" defaultValue={methodFilterValue} className={fieldClass}>
                 <option value="all">Todas</option>
-                {PAYMENT_METHODS.map((item) => (
-                  <option key={item} value={item}>{METHOD_LABELS[item]}</option>
-                ))}
+                {exactMethodRows.length > 0
+                  ? exactMethodRows.map((item) => (
+                      <option key={item.id} value={`exact:${item.id}`}>{item.name}</option>
+                    ))
+                  : PAYMENT_METHODS.map((item) => (
+                      <option key={item} value={item}>{METHOD_LABELS[item]}</option>
+                    ))}
               </select>
             </label>
 
@@ -419,7 +476,7 @@ export default async function FinanceiroPage({ searchParams }: FinancePageProps)
 
           <div className="border-border flex flex-wrap items-center justify-between gap-3 border-t pt-4">
             <p className="text-muted-foreground text-xs">
-              Os filtros de conta bancária e categoria já estão preparados para o mapeamento dos dados do EstoqueNow.
+              A forma de pagamento histórica é preservada exatamente como veio do EstoqueNow.
             </p>
             <div className="flex gap-2">
               <a
@@ -490,7 +547,7 @@ export default async function FinanceiroPage({ searchParams }: FinancePageProps)
                         {STATUS_LABELS[row.status]}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3">{METHOD_LABELS[row.method]}</td>
+                    <td className="whitespace-nowrap px-4 py-3">{row.paymentMethodLabel}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{row.bankAccount}</td>
                     <td className="whitespace-nowrap px-4 py-3">{CATEGORY_LABELS[row.categoryKey]}</td>
                     <td className={`whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums sm:pr-5 ${row.direction === "expense" ? "text-red-700" : "text-emerald-700"}`}>

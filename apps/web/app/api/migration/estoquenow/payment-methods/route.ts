@@ -1,9 +1,13 @@
+import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+
+import { db, locacameraPaymentMethods } from "@louez/db";
 
 import { getCurrentStore } from "@/lib/store-context";
 
 const DEFAULT_ESTOQUENOW_BASE_URL = "https://api.estoquenow.com.br/v1";
 const PAYMENT_METHOD_CACHE_MS = 10 * 60 * 1000;
+const SOURCE_SYSTEM = "estoquenow";
 
 type EstoqueNowPaymentMethod = {
   id: number | string;
@@ -14,17 +18,19 @@ type EstoqueNowPaymentMethod = {
   payment_service_id?: number | string | null;
 };
 
+type NormalizedPaymentMethod = {
+  id: string;
+  name: string;
+  type: string | null;
+  application: string | null;
+  canEdit: boolean | null;
+  paymentServiceId: string | null;
+};
+
 let paymentMethodCache:
   | {
       expiresAt: number;
-      methods: Array<{
-        id: string;
-        name: string;
-        type: string | null;
-        application: string | null;
-        canEdit: boolean | null;
-        paymentServiceId: string | null;
-      }>;
+      methods: NormalizedPaymentMethod[];
     }
   | null = null;
 
@@ -109,6 +115,97 @@ async function listPaymentMethods() {
   return methods;
 }
 
+async function syncPaymentMethods(storeId: string, methods: NormalizedPaymentMethod[]) {
+  let stored = await db
+    .select({
+      id: locacameraPaymentMethods.id,
+      externalId: locacameraPaymentMethods.externalId,
+      name: locacameraPaymentMethods.name,
+      type: locacameraPaymentMethods.type,
+      application: locacameraPaymentMethods.application,
+      canEdit: locacameraPaymentMethods.canEdit,
+      paymentServiceId: locacameraPaymentMethods.paymentServiceId,
+      isActive: locacameraPaymentMethods.isActive,
+    })
+    .from(locacameraPaymentMethods)
+    .where(
+      and(
+        eq(locacameraPaymentMethods.storeId, storeId),
+        eq(locacameraPaymentMethods.sourceSystem, SOURCE_SYSTEM),
+      ),
+    );
+
+  const storedByExternalId = new Map(stored.map((method) => [method.externalId, method]));
+  let changed = false;
+
+  for (const method of methods) {
+    const current = storedByExternalId.get(method.id);
+    const needsUpdate =
+      !current ||
+      current.name !== method.name ||
+      current.type !== method.type ||
+      current.application !== method.application ||
+      current.canEdit !== method.canEdit ||
+      current.paymentServiceId !== method.paymentServiceId ||
+      !current.isActive;
+
+    if (!needsUpdate) continue;
+
+    changed = true;
+    await db
+      .insert(locacameraPaymentMethods)
+      .values({
+        storeId,
+        sourceSystem: SOURCE_SYSTEM,
+        externalId: method.id,
+        name: method.name,
+        type: method.type,
+        application: method.application,
+        canEdit: method.canEdit,
+        paymentServiceId: method.paymentServiceId,
+        isActive: true,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          name: method.name,
+          type: method.type,
+          application: method.application,
+          canEdit: method.canEdit,
+          paymentServiceId: method.paymentServiceId,
+          isActive: true,
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  if (changed) {
+    stored = await db
+      .select({
+        id: locacameraPaymentMethods.id,
+        externalId: locacameraPaymentMethods.externalId,
+        name: locacameraPaymentMethods.name,
+        type: locacameraPaymentMethods.type,
+        application: locacameraPaymentMethods.application,
+        canEdit: locacameraPaymentMethods.canEdit,
+        paymentServiceId: locacameraPaymentMethods.paymentServiceId,
+        isActive: locacameraPaymentMethods.isActive,
+      })
+      .from(locacameraPaymentMethods)
+      .where(
+        and(
+          eq(locacameraPaymentMethods.storeId, storeId),
+          eq(locacameraPaymentMethods.sourceSystem, SOURCE_SYSTEM),
+        ),
+      );
+  }
+
+  const localIdByExternalId = new Map(stored.map((method) => [method.externalId, method.id]));
+  return methods.map((method) => ({
+    ...method,
+    localId: localIdByExternalId.get(method.id) ?? null,
+  }));
+}
+
 export async function GET() {
   const store = await getCurrentStore();
   if (!store) {
@@ -117,8 +214,10 @@ export async function GET() {
 
   try {
     const methods = await listPaymentMethods();
+    const synchronizedMethods = await syncPaymentMethods(store.id, methods);
+
     return NextResponse.json(
-      { methods },
+      { methods: synchronizedMethods },
       {
         headers: {
           "Cache-Control": "private, max-age=300, stale-while-revalidate=900",

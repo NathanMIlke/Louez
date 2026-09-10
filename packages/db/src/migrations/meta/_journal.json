@@ -561,6 +561,13 @@
       "when": 1789074900000,
       "tag": "0074_locacamera_customer_migration_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "5",
+      "when": 1789075200000,
+      "tag": "0075_locacamera_payment_history",
+      "breakpoints": true
     }
   ]
 }

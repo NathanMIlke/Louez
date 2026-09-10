@@ -48,6 +48,7 @@ interface Customer {
   firstName: string
   lastName: string
   companyName: string | null
+  cpfCnpj: string | null
   phone: string | null
   city: string | null
   createdAt: Date | string
@@ -58,6 +59,25 @@ interface Customer {
 
 interface CustomersTableProps {
   customers: Customer[]
+}
+
+function formatCpfCnpj(value: string | null) {
+  if (!value) return null
+
+  const digits = value.replace(/\D/g, '')
+
+  if (digits.length === 11) {
+    return `CPF ${digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}`
+  }
+
+  if (digits.length === 14) {
+    return `CNPJ ${digits.replace(
+      /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
+      '$1.$2.$3/$4-$5',
+    )}`
+  }
+
+  return value
 }
 
 export function CustomersTable({ customers }: CustomersTableProps) {
@@ -123,24 +143,38 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                   <div className="space-y-1">
                     {customer.customerType === 'business' && customer.companyName ? (
                       <>
-                        <Link
-                          href={`/dashboard/customers/${customer.id}`}
-                          className="font-medium hover:underline flex items-center gap-1.5"
-                        >
-                          <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                          {customer.companyName}
-                        </Link>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <Link
+                            href={`/dashboard/customers/${customer.id}`}
+                            className="font-medium hover:underline flex items-center gap-1.5"
+                          >
+                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                            {customer.companyName}
+                          </Link>
+                          {customer.cpfCnpj && (
+                            <span className="text-xs text-muted-foreground">
+                              {formatCpfCnpj(customer.cpfCnpj)}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-sm text-muted-foreground">
                           {customer.firstName} {customer.lastName}
                         </div>
                       </>
                     ) : (
-                      <Link
-                        href={`/dashboard/customers/${customer.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {customer.firstName} {customer.lastName}
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <Link
+                          href={`/dashboard/customers/${customer.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {customer.firstName} {customer.lastName}
+                        </Link>
+                        {customer.cpfCnpj && (
+                          <span className="text-xs text-muted-foreground">
+                            {formatCpfCnpj(customer.cpfCnpj)}
+                          </span>
+                        )}
+                      </div>
                     )}
                     {customer.city && (
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">

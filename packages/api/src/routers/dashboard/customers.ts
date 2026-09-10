@@ -1,4 +1,9 @@
-import { db, customers, reservations } from '@louez/db';
+import {
+  db,
+  customers,
+  reservations,
+  locacameraCustomerProfiles,
+} from '@louez/db';
 import { and, count, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -28,7 +33,8 @@ const list = dashboardProcedure
         LOWER(${customers.lastName}) LIKE ${searchLower} OR
         LOWER(${customers.email}) LIKE ${searchLower} OR
         LOWER(${customers.phone}) LIKE ${searchLower} OR
-        LOWER(${customers.companyName}) LIKE ${searchLower}
+        LOWER(${customers.companyName}) LIKE ${searchLower} OR
+        LOWER(${locacameraCustomerProfiles.cpfCnpj}) LIKE ${searchLower}
       )`);
     }
 
@@ -58,6 +64,7 @@ const list = dashboardProcedure
         firstName: customers.firstName,
         lastName: customers.lastName,
         companyName: customers.companyName,
+        cpfCnpj: locacameraCustomerProfiles.cpfCnpj,
         phone: customers.phone,
         city: customers.city,
         createdAt: customers.createdAt,
@@ -67,6 +74,13 @@ const list = dashboardProcedure
       })
       .from(customers)
       .leftJoin(
+        locacameraCustomerProfiles,
+        and(
+          eq(locacameraCustomerProfiles.customerId, customers.id),
+          eq(locacameraCustomerProfiles.storeId, storeId),
+        ),
+      )
+      .leftJoin(
         reservations,
         and(
           eq(reservations.customerId, customers.id),
@@ -74,7 +88,7 @@ const list = dashboardProcedure
         ),
       )
       .where(whereClause)
-      .groupBy(customers.id)
+      .groupBy(customers.id, locacameraCustomerProfiles.cpfCnpj)
       .$dynamic();
 
     switch (input.sort) {

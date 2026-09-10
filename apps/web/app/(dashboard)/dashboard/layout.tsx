@@ -44,6 +44,9 @@ import { StoreProvider } from "@/contexts/store-context";
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
 export const instant = false;
 
+/** Visible LocaCamera release marker so deployed updates can be confirmed at a glance. */
+const LOCACAMERA_APP_VERSION = "1.0.0";
+
 /** Total balance under which the sidebar shows its low-credit marker. */
 const LOW_AI_CREDITS_THRESHOLD = 5;
 
@@ -178,6 +181,9 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                         <Separator orientation="vertical" className="h-4 shrink-0" />
                         <DashboardBreadcrumbs />
                       </div>
+                      <span className="shrink-0 rounded-md border px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                        Versão {LOCACAMERA_APP_VERSION}
+                      </span>
                       <DashboardHeaderActions
                         showAIChat={showAIChat}
                         reservationLimits={limits.reservationsThisMonth}

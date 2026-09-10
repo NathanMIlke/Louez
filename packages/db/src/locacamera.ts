@@ -18,6 +18,7 @@ export const locacameraCustomerProfiles = mysqlTable(
     instagram: varchar('instagram', { length: 255 }),
     acquisitionSource: varchar('acquisition_source', { length: 255 }),
     registeredAt: timestamp('registered_at', { mode: 'date' }),
+    backupContact: varchar('backup_contact', { length: 255 }),
 
     // Pinned links/references, one per line. This intentionally accepts both
     // URLs and private legacy references so the EstoqueNow/Wix migration can

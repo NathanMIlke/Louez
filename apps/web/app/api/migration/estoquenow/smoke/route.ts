@@ -5,9 +5,6 @@ import { and, eq } from "drizzle-orm";
 import { categories, customers, db, productCategories, products } from "@louez/db";
 import { currentUserHasPermission, getCurrentStore } from "@/lib/store-context";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 const ESTOQUENOW_API = "https://api.estoquenow.com.br/v1";
 const SMOKE_LIMIT = 10;
 

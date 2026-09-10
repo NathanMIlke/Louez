@@ -52,6 +52,7 @@ interface Customer {
   instagram?: string | null
   acquisitionSource?: string | null
   registeredAt?: Date | string | null
+  backupContact?: string | null
   pinnedFiles?: string | null
 }
 
@@ -86,9 +87,7 @@ export function CustomerForm({
   const [rootError, setRootError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (isEditing) {
-      return
-    }
+    if (isEditing) return
 
     trackOpenReplayEvent(openReplayEvents.dashboardCustomerCreationStarted, {
       journey: 'customer_creation',
@@ -115,18 +114,16 @@ export function CustomerForm({
       instagram: customer?.instagram || undefined,
       acquisitionSource: customer?.acquisitionSource || undefined,
       registeredAt: dateInputValue(customer?.registeredAt) || undefined,
+      backupContact: customer?.backupContact || undefined,
       pinnedFiles: customer?.pinnedFiles || undefined,
     },
     onSubmit: async ({ value }) => {
       setRootError(null)
 
-      // Validate Louez's native customer fields with the upstream schema.
       const validation = customerSchema.safeParse(value)
       if (!validation.success) {
         const firstError = validation.error.issues[0]
-        if (firstError) {
-          setRootError(firstError.message)
-        }
+        if (firstError) setRootError(firstError.message)
         return
       }
 
@@ -135,6 +132,7 @@ export function CustomerForm({
         instagram: value.instagram || undefined,
         acquisitionSource: value.acquisitionSource || undefined,
         registeredAt: value.registeredAt || undefined,
+        backupContact: value.backupContact || undefined,
         pinnedFiles: value.pinnedFiles || undefined,
       }
 
@@ -159,11 +157,8 @@ export function CustomerForm({
           )
         }
 
-        if (isEditing) {
-          router.push(`/dashboard/customers/${customer.id}`)
-        } else {
-          router.push('/dashboard/customers')
-        }
+        if (isEditing) router.push(`/dashboard/customers/${customer.id}`)
+        else router.push('/dashboard/customers')
       })
     },
   })
@@ -186,283 +181,260 @@ export function CustomerForm({
       <form.Form className="space-y-6">
         <RootError error={rootError} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('personalInfo')}</CardTitle>
-          <CardDescription>
-            {t('personalInfoDescription')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {/* Business customer toggle */}
-          <form.Field name="customerType">
-            {(field) => (
-              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <Label className="text-base">{t('businessCustomer')}</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {t('businessCustomerDescription')}
-                  </p>
-                </div>
-                <Switch
-                  checked={field.state.value === 'business'}
-                  onCheckedChange={(checked) => {
-                    field.handleChange(checked ? 'business' : 'individual')
-                    if (!checked) {
-                      form.setFieldValue('companyName', undefined)
-                      form.setFieldValue('companyNumber', undefined)
-                      form.setFieldValue('vatNumber', undefined)
-                    }
-                  }}
-                />
-              </div>
-            )}
-          </form.Field>
-
-          {/* Company name - only shown for business customers */}
-          {customerType === 'business' && (
-            <form.Field name="companyName">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('personalInfo')}</CardTitle>
+            <CardDescription>{t('personalInfoDescription')}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <form.Field name="customerType">
               {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>{t('companyName')} *</Label>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={field.state.value || ''}
-                    onChange={(e) => field.handleChange(e.target.value || undefined)}
-                    onBlur={field.handleBlur}
-                    placeholder={t('companyNamePlaceholder')}
+                <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">{t('businessCustomer')}</Label>
+                    <p className="text-sm text-muted-foreground">{t('businessCustomerDescription')}</p>
+                  </div>
+                  <Switch
+                    checked={field.state.value === 'business'}
+                    onCheckedChange={(checked) => {
+                      field.handleChange(checked ? 'business' : 'individual')
+                      if (!checked) {
+                        form.setFieldValue('companyName', undefined)
+                        form.setFieldValue('companyNumber', undefined)
+                        form.setFieldValue('vatNumber', undefined)
+                      }
+                    }}
                   />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm font-medium text-destructive">
-                      {getFieldError(field.state.meta.errors[0])}
-                    </p>
-                  )}
                 </div>
               )}
             </form.Field>
-          )}
 
-          {/* Company identifiers - optional, used to issue a B2B invoice */}
-          {customerType === 'business' && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <form.Field name="companyNumber">
+            {customerType === 'business' && (
+              <form.Field name="companyName">
                 {(field) => (
                   <div className="space-y-2">
-                    <Label htmlFor={field.name}>{companyNumberLabel}</Label>
+                    <Label htmlFor={field.name}>{t('companyName')} *</Label>
                     <Input
                       id={field.name}
                       name={field.name}
-                      inputMode="numeric"
-                      autoComplete="off"
                       value={field.state.value || ''}
                       onChange={(e) => field.handleChange(e.target.value || undefined)}
                       onBlur={field.handleBlur}
-                      placeholder={t('companyNumberPlaceholder')}
+                      placeholder={t('companyNamePlaceholder')}
                     />
-                    <p className="text-sm text-muted-foreground">
-                      {t('companyNumberHelp')}
-                    </p>
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm font-medium text-destructive">
-                        {getFieldError(field.state.meta.errors[0])}
-                      </p>
+                      <p className="text-sm font-medium text-destructive">{getFieldError(field.state.meta.errors[0])}</p>
                     )}
                   </div>
                 )}
               </form.Field>
+            )}
 
-              <form.Field name="vatNumber">
+            {customerType === 'business' && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <form.Field name="companyNumber">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor={field.name}>{companyNumberLabel}</Label>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={field.state.value || ''}
+                        onChange={(e) => field.handleChange(e.target.value || undefined)}
+                        onBlur={field.handleBlur}
+                        placeholder={t('companyNumberPlaceholder')}
+                      />
+                      <p className="text-sm text-muted-foreground">{t('companyNumberHelp')}</p>
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm font-medium text-destructive">{getFieldError(field.state.meta.errors[0])}</p>
+                      )}
+                    </div>
+                  )}
+                </form.Field>
+
+                <form.Field name="vatNumber">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor={field.name}>{t('vatNumber')}</Label>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        autoComplete="off"
+                        value={field.state.value || ''}
+                        onChange={(e) => field.handleChange(e.target.value || undefined)}
+                        onBlur={field.handleBlur}
+                        placeholder={t('vatNumberPlaceholder')}
+                      />
+                    </div>
+                  )}
+                </form.Field>
+              </div>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <form.AppField name="firstName">
+                {(field) => <field.Input label={t('firstName')} placeholder={t('firstNamePlaceholder')} />}
+              </form.AppField>
+              <form.AppField name="lastName">
+                {(field) => <field.Input label={t('lastName')} placeholder={t('lastNamePlaceholder')} />}
+              </form.AppField>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <form.AppField name="email">
+                {(field) => <field.Input label={t('email')} type="email" placeholder={t('emailPlaceholder')} />}
+              </form.AppField>
+
+              <form.Field name="phone">
                 {(field) => (
                   <div className="space-y-2">
-                    <Label htmlFor={field.name}>{t('vatNumber')}</Label>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      autoComplete="off"
+                    <Label htmlFor={field.name}>{t('phone')}</Label>
+                    <PhoneInput
                       value={field.state.value || ''}
-                      onChange={(e) => field.handleChange(e.target.value || undefined)}
-                      onBlur={field.handleBlur}
-                      placeholder={t('vatNumberPlaceholder')}
+                      onChange={field.handleChange}
+                      placeholder={t('phonePlaceholder')}
                     />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm font-medium text-destructive">
-                        {getFieldError(field.state.meta.errors[0])}
-                      </p>
-                    )}
                   </div>
                 )}
               </form.Field>
             </div>
-          )}
+          </CardContent>
+        </Card>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <form.AppField name="firstName">
-              {(field) => <field.Input label={t('firstName')} placeholder={t('firstNamePlaceholder')} />}
-            </form.AppField>
+        <Card>
+          <CardHeader>
+            <CardTitle>Dados da LocaCamera</CardTitle>
+            <CardDescription>
+              Informações comerciais e cadastrais usadas pela operação e pela migração do EstoqueNow.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <form.AppField name="instagram">
+                {(field) => <field.Input label="Instagram" placeholder="@usuario" />}
+              </form.AppField>
 
-            <form.AppField name="lastName">
-              {(field) => <field.Input label={t('lastName')} placeholder={t('lastNamePlaceholder')} />}
-            </form.AppField>
-          </div>
+              <form.AppField name="acquisitionSource">
+                {(field) => <field.Input label="Como conheceu a loja" placeholder="Instagram, Google, indicação..." />}
+              </form.AppField>
+            </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <form.AppField name="email">
-              {(field) => <field.Input label={t('email')} type="email" placeholder={t('emailPlaceholder')} />}
-            </form.AppField>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <form.Field name="registeredAt">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor={field.name}>Data de cadastro</Label>
+                    <Input
+                      id={field.name}
+                      name={field.name}
+                      type="date"
+                      value={field.state.value || ''}
+                      onChange={(e) => field.handleChange(e.target.value || undefined)}
+                      onBlur={field.handleBlur}
+                    />
+                  </div>
+                )}
+              </form.Field>
 
-            <form.Field name="phone">
+              <form.Field name="backupContact">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor={field.name}>Contato de backup</Label>
+                    <PhoneInput
+                      value={field.state.value || ''}
+                      onChange={field.handleChange}
+                      placeholder="Telefone ou WhatsApp alternativo"
+                    />
+                  </div>
+                )}
+              </form.Field>
+            </div>
+
+            <form.AppField name="pinnedFiles">
               {(field) => (
                 <div className="space-y-2">
-                  <Label htmlFor={field.name}>{t('phone')}</Label>
-                  <PhoneInput
-                    value={field.state.value || ''}
-                    onChange={field.handleChange}
-                    placeholder={t('phonePlaceholder')}
+                  <Label htmlFor={field.name}>Arquivos fixados</Label>
+                  <field.Textarea
+                    placeholder="Cole links ou referências de arquivos, um por linha."
+                    rows={4}
                   />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm font-medium text-destructive">
-                      {getFieldError(field.state.meta.errors[0])}
-                    </p>
-                  )}
+                  <p className="text-sm text-muted-foreground">
+                    Aceita links e referências privadas trazidas do EstoqueNow/Wix. O upload direto de documentos será conectado ao storage depois.
+                  </p>
                 </div>
               )}
-            </form.Field>
-          </div>
-        </CardContent>
-      </Card>
+            </form.AppField>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Dados da LocaCamera</CardTitle>
-          <CardDescription>
-            Informações comerciais e cadastrais usadas pela operação e pela migração do EstoqueNow.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <form.AppField name="instagram">
-              {(field) => <field.Input label="Instagram" placeholder="@usuario" />}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('addressSection')}</CardTitle>
+            <CardDescription>{t('addressDescription')}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <form.AppField name="address">
+              {(field) => <field.Input label={t('address')} placeholder={t('addressPlaceholder')} />}
             </form.AppField>
 
-            <form.AppField name="acquisitionSource">
-              {(field) => <field.Input label="Como conheceu a loja" placeholder="Instagram, Google, indicação..." />}
+            <div className="grid gap-4 sm:grid-cols-3">
+              <form.AppField name="postalCode">
+                {(field) => <field.Input label={t('postalCode')} placeholder={t('postalCodePlaceholder')} />}
+              </form.AppField>
+              <form.AppField name="city">
+                {(field) => <field.Input label={t('city')} placeholder={t('cityPlaceholder')} />}
+              </form.AppField>
+
+              <form.Field name="country">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor={field.name}>{t('country')}</Label>
+                    <Select
+                      value={field.state.value || undefined}
+                      onValueChange={(value) => { if (value !== null) field.handleChange(value || undefined) }}
+                    >
+                      <SelectTrigger id={field.name}>
+                        <SelectValue placeholder={t('selectCountry')}>
+                          {field.state.value ? countryLabel(field.state.value) : undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRY_CODES.map((code) => (
+                          <SelectItem key={code} value={code} label={countryLabel(code)}>
+                            {countryLabel(code)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </form.Field>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('internalNotes')}</CardTitle>
+            <CardDescription>{t('internalNotesDescription')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form.AppField name="notes">
+              {(field) => <field.Textarea placeholder={t('notesPlaceholder')} rows={4} />}
             </form.AppField>
-          </div>
+          </CardContent>
+        </Card>
 
-          <form.Field name="registeredAt">
-            {(field) => (
-              <div className="space-y-2 sm:max-w-xs">
-                <Label htmlFor={field.name}>Data de cadastro</Label>
-                <Input
-                  id={field.name}
-                  name={field.name}
-                  type="date"
-                  value={field.state.value || ''}
-                  onChange={(e) => field.handleChange(e.target.value || undefined)}
-                  onBlur={field.handleBlur}
-                />
-              </div>
-            )}
-          </form.Field>
-
-          <form.AppField name="pinnedFiles">
-            {(field) => (
-              <div className="space-y-2">
-                <Label htmlFor={field.name}>Arquivos fixados</Label>
-                <field.Textarea
-                  placeholder="Cole links ou referências de arquivos, um por linha."
-                  rows={4}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Aceita links e referências privadas trazidas do EstoqueNow/Wix. O upload direto de documentos será conectado ao storage depois.
-                </p>
-              </div>
-            )}
-          </form.AppField>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('addressSection')}</CardTitle>
-          <CardDescription>
-            {t('addressDescription')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <form.AppField name="address">
-            {(field) => <field.Input label={t('address')} placeholder={t('addressPlaceholder')} />}
-          </form.AppField>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <form.AppField name="postalCode">
-              {(field) => <field.Input label={t('postalCode')} placeholder={t('postalCodePlaceholder')} />}
-            </form.AppField>
-
-            <form.AppField name="city">
-              {(field) => <field.Input label={t('city')} placeholder={t('cityPlaceholder')} />}
-            </form.AppField>
-
-            <form.Field name="country">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>{t('country')}</Label>
-                  <Select
-                    value={field.state.value || undefined}
-                    onValueChange={(value) => { if (value !== null) field.handleChange(value || undefined) }}
-                  >
-                    <SelectTrigger id={field.name}>
-                      <SelectValue placeholder={t('selectCountry')}>
-                        {field.state.value ? countryLabel(field.state.value) : undefined}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COUNTRY_CODES.map((code) => (
-                        <SelectItem key={code} value={code} label={countryLabel(code)}>
-                          {countryLabel(code)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm font-medium text-destructive">
-                      {getFieldError(field.state.meta.errors[0])}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('internalNotes')}</CardTitle>
-          <CardDescription>
-            {t('internalNotesDescription')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form.AppField name="notes">
-            {(field) => <field.Textarea placeholder={t('notesPlaceholder')} rows={4} />}
-          </form.AppField>
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-        >
-          {tCommon('cancel')}
-        </Button>
-        <Button type="submit" isPending={isPending}>
-          {isEditing ? t('save') : t('createCustomer')}
-        </Button>
-      </div>
+        <div className="flex justify-end gap-4">
+          <Button type="button" variant="outline" onClick={() => router.back()}>
+            {tCommon('cancel')}
+          </Button>
+          <Button type="submit" isPending={isPending}>
+            {isEditing ? t('save') : t('createCustomer')}
+          </Button>
+        </div>
       </form.Form>
     </form.AppForm>
   )

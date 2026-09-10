@@ -1,6 +1,6 @@
 import { db } from '@louez/db'
 import { getCurrentStore } from '@/lib/store-context'
-import { customers, reservations } from '@louez/db'
+import { customers, locacameraCustomerProfiles, reservations } from '@louez/db'
 import { eq, and, desc } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -16,6 +16,8 @@ import {
   Pencil,
   CreditCard,
   Building2,
+  Instagram,
+  Paperclip,
 } from 'lucide-react'
 
 import { Button } from '@louez/ui'
@@ -77,6 +79,17 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
     notFound()
   }
 
+  const [locacameraProfile] = await db
+    .select()
+    .from(locacameraCustomerProfiles)
+    .where(
+      and(
+        eq(locacameraCustomerProfiles.customerId, customer.id),
+        eq(locacameraCustomerProfiles.storeId, store.id),
+      ),
+    )
+    .limit(1)
+
   // Get customer reservations with items
   const customerReservations = await db.query.reservations.findMany({
     where: eq(reservations.customerId, customer.id),
@@ -105,6 +118,12 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
     customer.customerType === 'business' && customer.companyName
       ? customer.companyName
       : `${customer.firstName} ${customer.lastName}`.trim()
+  const registrationDate = locacameraProfile?.registeredAt ?? customer.createdAt
+  const instagramHandle = locacameraProfile?.instagram?.replace(/^@/, '') ?? ''
+  const pinnedFiles = (locacameraProfile?.pinnedFiles ?? '')
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean)
 
   return (
     <div className="space-y-6">
@@ -128,7 +147,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {t('contact')}: {customer.firstName} {customer.lastName} · {t('customerSince')} {format(customer.createdAt, 'dd MMMM yyyy', { locale: dateLocale })}
+                  {t('contact')}: {customer.firstName} {customer.lastName} · Data de cadastro {format(registrationDate, 'dd MMMM yyyy', { locale: dateLocale })}
                 </p>
               </>
             ) : (
@@ -142,7 +161,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {t('customerSince')} {format(customer.createdAt, 'dd MMMM yyyy', { locale: dateLocale })}
+                  Data de cadastro {format(registrationDate, 'dd MMMM yyyy', { locale: dateLocale })}
                 </p>
               </>
             )}
@@ -220,6 +239,27 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                 <PhoneContactPopover phone={customer.phone} className="text-foreground" />
               </div>
             )}
+            {instagramHandle && (
+              <div className="flex items-center gap-3">
+                <Instagram className="h-4 w-4 text-muted-foreground" />
+                <a
+                  href={`https://instagram.com/${encodeURIComponent(instagramHandle)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:underline"
+                >
+                  @{instagramHandle}
+                </a>
+              </div>
+            )}
+            {locacameraProfile?.acquisitionSource && (
+              <div className="space-y-1 rounded-md border p-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Como conheceu a loja
+                </div>
+                <div>{locacameraProfile.acquisitionSource}</div>
+              </div>
+            )}
             {(customer.address || customer.city || customer.postalCode) && (
               <div className="flex items-start gap-3">
                 <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
@@ -246,6 +286,43 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
           </CardHeader>
           <CardContent>
             <CustomerNotes customerId={customer.id} initialNotes={customer.notes || ''} />
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-3">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Paperclip className="h-4 w-4" />
+              Arquivos fixados
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pinnedFiles.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum arquivo fixado.</p>
+            ) : (
+              <div className="grid gap-2">
+                {pinnedFiles.map((reference, index) => {
+                  const isLink = /^https?:\/\//i.test(reference)
+                  return (
+                    <div key={`${reference}-${index}`} className="flex items-start gap-2 rounded-md border p-3 text-sm">
+                      <Paperclip className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                      {isLink ? (
+                        <a
+                          href={reference}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="break-all hover:underline"
+                        >
+                          {reference}
+                        </a>
+                      ) : (
+                        <span className="break-all">{reference}</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -482,7 +482,7 @@ export function CustomerForm({
                     <Label htmlFor={field.name}>{t('country')}</Label>
                     <Select
                       value={field.state.value || undefined}
-                      onValueChange={(value) => { if (value !== null) field.handleChange(value || undefined) }}
+                      onValueChange={(value) => field.handleChange(value ?? '')}
                     >
                       <SelectTrigger id={field.name}>
                         <SelectValue placeholder={t('selectCountry')}>

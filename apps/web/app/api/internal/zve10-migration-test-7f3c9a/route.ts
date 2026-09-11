@@ -170,13 +170,20 @@ export async function GET() {
         await db.insert(categories).values({ id: categoryId, ...categoryValues });
       }
 
-      const existingMeta = await db.query.locacameraInventoryCategories.findFirst({
-        where: and(
-          eq(locacameraInventoryCategories.storeId, store.id),
-          eq(locacameraInventoryCategories.sourceSystem, "estoquenow"),
-          eq(locacameraInventoryCategories.externalCategoryId, categoryExternalId || categoryKey),
-        ),
-      });
+      const [existingMeta] = await db
+        .select()
+        .from(locacameraInventoryCategories)
+        .where(
+          and(
+            eq(locacameraInventoryCategories.storeId, store.id),
+            eq(locacameraInventoryCategories.sourceSystem, "estoquenow"),
+            eq(
+              locacameraInventoryCategories.externalCategoryId,
+              categoryExternalId || categoryKey,
+            ),
+          ),
+        )
+        .limit(1);
       const categoryMetaValues = {
         storeId: store.id,
         sourceSystem: "estoquenow",
@@ -242,13 +249,17 @@ export async function GET() {
       });
     }
 
-    const existingItemMeta = await db.query.locacameraInventoryItems.findFirst({
-      where: and(
-        eq(locacameraInventoryItems.storeId, store.id),
-        eq(locacameraInventoryItems.sourceSystem, "estoquenow"),
-        eq(locacameraInventoryItems.externalProductId, externalProductId),
-      ),
-    });
+    const [existingItemMeta] = await db
+      .select()
+      .from(locacameraInventoryItems)
+      .where(
+        and(
+          eq(locacameraInventoryItems.storeId, store.id),
+          eq(locacameraInventoryItems.sourceSystem, "estoquenow"),
+          eq(locacameraInventoryItems.externalProductId, externalProductId),
+        ),
+      )
+      .limit(1);
 
     const itemMetaValues = {
       storeId: store.id,
